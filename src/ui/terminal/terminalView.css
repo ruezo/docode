@@ -1,0 +1,141 @@
+[data-docode-workbench-root] .docode-terminal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: var(--docode-color-terminal-foreground);
+  background: var(--docode-color-terminal-background);
+  font: 13px/18px var(--docode-font-family-monospace);
+  user-select: text;
+}
+
+[data-docode-workbench-root] .docode-terminal__viewport {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: calc(100% - 28px);
+  padding: 4px 14px 0 20px;
+  overflow: auto;
+  scrollbar-color: var(--docode-color-scrollbar-slider) transparent;
+  scrollbar-width: thin;
+}
+
+[data-docode-workbench-root] .docode-terminal__output {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+[data-docode-workbench-root] .docode-terminal__entry {
+  margin: 0 0 4px;
+}
+
+[data-docode-workbench-root] .docode-terminal__command-line,
+[data-docode-workbench-root] .docode-terminal__result-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 18px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+[data-docode-workbench-root] .docode-terminal__command-line {
+  gap: 0;
+}
+
+[data-docode-workbench-root] .docode-terminal__command-marker {
+  box-sizing: border-box;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border: 2px solid var(--docode-color-description-foreground);
+  border-radius: 50%;
+  opacity: 0.55;
+}
+
+[data-docode-workbench-root]
+  .docode-terminal__entry[data-state='error']
+  .docode-terminal__result-line {
+  color: var(--docode-color-error-foreground);
+}
+
+[data-docode-workbench-root]
+  .docode-terminal__entry[data-state='pending']
+  .docode-terminal__result-line {
+  color: var(--docode-color-description-foreground);
+}
+
+[data-docode-workbench-root] .docode-terminal__prompt {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 0;
+  align-items: center;
+  min-width: 0;
+  flex: none;
+  height: 20px;
+  margin: 0 14px 2px 20px;
+}
+
+[data-docode-workbench-root] .docode-terminal__prompt-label {
+  flex: none;
+  margin-inline-end: 1ch;
+  color: var(--docode-color-terminal-foreground);
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-terminal__input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 40px;
+  height: 18px;
+  margin-left: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  color: inherit;
+  background: transparent;
+  caret-color: var(--docode-color-terminal-cursor);
+  font: inherit;
+}
+
+[data-docode-workbench-root] .docode-terminal__input:focus-visible {
+  outline: 0;
+  box-shadow: none;
+}
+
+[data-docode-workbench-root] .docode-terminal__input[aria-disabled='true'] {
+  opacity: 0.65;
+}
+
+[data-docode-workbench-root] .docode-terminal__cancel {
+  --docode-icon-size: 14px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  color: var(--docode-color-icon-foreground);
+  background: transparent;
+  cursor: pointer;
+  margin-left: 2px;
+}
+
+[data-docode-workbench-root] .docode-terminal__cancel:hover {
+  background: var(--docode-color-toolbar-hover-background);
+}
+
+[data-docode-workbench-root] .docode-terminal__cancel:focus-visible {
+  outline: 1px solid var(--docode-color-focus-border);
+  outline-offset: -1px;
+}

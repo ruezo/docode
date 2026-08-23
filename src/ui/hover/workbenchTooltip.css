@@ -1,0 +1,27 @@
+[data-docode-workbench-root] .docode-workbench-tooltip {
+  position: fixed;
+  z-index: 3000;
+  max-width: min(500px, calc(100vw - 16px));
+  padding: 4px 8px;
+  border: 1px solid var(--docode-color-hover-border);
+  border-radius: var(--docode-corner-radius-large);
+  color: var(--docode-color-hover-foreground);
+  background: var(--docode-color-hover-background);
+  box-shadow: var(--docode-shadow-lg);
+  font: 13px/1.5 var(--docode-font-family-ui);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: docode-hover-fade-in 100ms linear;
+}
+
+@keyframes docode-hover-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-docode-workbench-root] .docode-workbench-tooltip {
+    animation: none;
+  }
+}

@@ -1,0 +1,218 @@
+[data-docode-workbench-root] .docode-search-document__gutter {
+  border-right: 1px solid var(--docode-color-editor-group-border);
+}
+
+[data-docode-workbench-root] .docode-search-document {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  color: var(--docode-color-editor-foreground);
+  background: var(--docode-color-editor-background);
+  scrollbar-color: var(--docode-color-scrollbar-slider) transparent;
+}
+
+[data-docode-workbench-root] .docode-search-document__form {
+  padding: 12px 20px 8px;
+  border-bottom: 1px solid var(--docode-color-editor-group-border);
+}
+
+[data-docode-workbench-root] .docode-search-document__label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--docode-color-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+[data-docode-workbench-root] .docode-search-document__input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 28px;
+}
+
+[data-docode-workbench-root] .docode-search-document__input-row > .docode-codicon {
+  margin-right: -28px;
+  margin-left: 8px;
+  color: var(--docode-color-description-foreground);
+  pointer-events: none;
+  z-index: 1;
+}
+
+[data-docode-workbench-root] .docode-search-document__input {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 3px 8px 3px 30px;
+  border: 1px solid var(--docode-color-input-border);
+  border-radius: 2px;
+  outline: none;
+  color: var(--docode-color-input-foreground);
+  background: var(--docode-color-input-background);
+  font: inherit;
+}
+
+[data-docode-workbench-root] .docode-search-document__input:focus {
+  border-color: var(--docode-color-focus-border);
+}
+
+[data-docode-workbench-root] .docode-search-document__input::placeholder {
+  color: var(--docode-color-input-placeholder);
+}
+
+[data-docode-workbench-root] .docode-search-document__submit {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--docode-color-button-border);
+  border-radius: 2px;
+  color: var(--docode-color-button-foreground);
+  background: var(--docode-color-button-background);
+  font: inherit;
+}
+
+[data-docode-workbench-root] .docode-search-document__submit:not(:disabled):hover {
+  background: var(--docode-color-button-hover-background);
+}
+
+[data-docode-workbench-root] .docode-search-document__submit:focus-visible {
+  outline: 1px solid var(--docode-color-focus-border);
+  outline-offset: 2px;
+}
+
+[data-docode-workbench-root] .docode-search-document__submit:disabled {
+  opacity: 0.5;
+}
+
+[data-docode-workbench-root] .docode-search-document__summary {
+  min-height: 18px;
+  padding: 8px 22px 4px;
+  color: var(--docode-color-description-foreground);
+  font-size: 12px;
+}
+
+[data-docode-workbench-root] .docode-search-document__results {
+  padding-bottom: 16px;
+}
+
+[data-docode-workbench-root] .docode-search-document__group-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 22px;
+  margin: 0;
+  padding: 0 20px;
+  color: var(--docode-color-foreground);
+  background: var(--docode-color-chrome-background);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-docode-workbench-root] .docode-search-document__count {
+  min-width: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 9px;
+  color: var(--docode-color-foreground);
+  background: var(--docode-color-list-inactive-selection-background);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+}
+
+[data-docode-workbench-root] .docode-search-document__result {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 44px;
+  padding: 3px 20px 3px 28px;
+  border: 1px solid transparent;
+  outline: none;
+  color: var(--docode-color-editor-foreground);
+  text-decoration: none;
+}
+
+[data-docode-workbench-root] .docode-search-document__result:hover {
+  background: var(--docode-color-list-hover-background);
+}
+
+[data-docode-workbench-root] .docode-search-document__result:focus-visible {
+  border-color: var(--docode-color-focus-border);
+  background: var(--docode-color-list-active-selection-background);
+  color: var(--docode-color-list-active-selection-foreground);
+}
+
+[data-docode-workbench-root] .docode-search-document__result-icon {
+  flex: none;
+  color: var(--docode-color-icon-foreground);
+}
+
+[data-docode-workbench-root] .docode-search-document__result-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+[data-docode-workbench-root] .docode-search-document__result-label,
+[data-docode-workbench-root] .docode-search-document__result-description,
+[data-docode-workbench-root] .docode-search-document__result-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-search-document__result-label {
+  color: inherit;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+[data-docode-workbench-root] .docode-search-document__result-description,
+[data-docode-workbench-root] .docode-search-document__result-path {
+  color: var(--docode-color-description-foreground);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+[data-docode-workbench-root] .docode-search-document__result-path {
+  flex: 0 1 260px;
+  direction: rtl;
+  text-align: left;
+}
+
+[data-docode-workbench-root] .docode-search-document__message,
+[data-docode-workbench-root] .docode-search-document__navigation-error {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 14px 22px;
+  color: var(--docode-color-description-foreground);
+  font-size: 12px;
+}
+
+[data-docode-workbench-root] .docode-search-document__navigation-error {
+  color: var(--docode-color-error-foreground);
+}
+
+@media (max-width: 720px) {
+  [data-docode-workbench-root] .docode-search-document__form {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  [data-docode-workbench-root] .docode-search-document__result {
+    height: 48px;
+    padding-right: 10px;
+    padding-left: 14px;
+  }
+
+  [data-docode-workbench-root] .docode-search-document__result-path {
+    display: none;
+  }
+}

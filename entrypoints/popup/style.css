@@ -1,0 +1,458 @@
+:root {
+  color: #cccccc;
+  background: #1e1e1e;
+  font-family: var(--docode-font-family-ui);
+  font-size: var(--docode-font-size-ui);
+  line-height: var(--docode-line-height-ui);
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 330px;
+  height: 201px;
+  margin: 0;
+  overflow: hidden;
+  background: #1e1e1e;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.docode-popup {
+  display: grid;
+  width: 330px;
+  height: 201px;
+  grid-template-rows: 26px minmax(0, 1fr) 18px;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  color: #cccccc;
+  background: #1e1e1e;
+  transform-origin: center;
+  animation: docode-popup-enter 200ms ease-out both;
+}
+
+.docode-popup h1,
+.docode-popup h2,
+.docode-popup p {
+  margin: 0;
+}
+
+.docode-popup__titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #3c3c3c;
+  background: #323233;
+  user-select: none;
+}
+
+.docode-popup__traffic-lights {
+  position: absolute;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.docode-popup__traffic-light {
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgb(0 0 0 / 18%);
+  border-radius: 50%;
+}
+
+.docode-popup__traffic-light--close {
+  background: #ff5f57;
+}
+
+.docode-popup__traffic-light--minimize {
+  background: #febc2e;
+}
+
+.docode-popup__traffic-light--maximize {
+  background: #28c840;
+}
+
+.docode-popup__window-title {
+  color: #cccccc;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.docode-popup__window-controls {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  color: #b5b5b5;
+}
+
+.docode-popup__window-controls .docode-codicon {
+  display: grid;
+  width: 27px;
+  place-items: center;
+  font-size: 10px;
+}
+
+.docode-popup__workbench {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: 30px minmax(0, 1fr);
+}
+
+.docode-popup__activity-bar {
+  min-height: 0;
+  border-right: 1px solid #3c3c3c;
+  background: #2d2d2d;
+}
+
+.docode-popup__activity-group {
+  display: grid;
+}
+
+.docode-popup__activity-item {
+  position: relative;
+  display: grid;
+  width: 29px;
+  height: 30px;
+  place-items: center;
+  color: #858585;
+}
+
+.docode-popup__activity-item .docode-codicon {
+  font-size: 15px;
+}
+
+.docode-popup__activity-item img {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  filter: grayscale(0.12) brightness(0.9);
+}
+
+.docode-popup__activity-item--active {
+  color: #ffffff;
+  background: rgb(0 122 204 / 16%);
+}
+
+.docode-popup__activity-item--active::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: #007acc;
+  content: '';
+}
+
+.docode-popup__welcome {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-areas:
+    'header'
+    'quick-actions';
+  grid-template-rows: 31px minmax(0, 1fr);
+  gap: 4px;
+  overflow: hidden;
+  padding: 6px 8px;
+  background: #1e1e1e;
+}
+
+.docode-popup__header {
+  display: flex;
+  min-width: 0;
+  min-height: 31px;
+  align-items: center;
+  grid-area: header;
+  gap: 7px;
+}
+
+.docode-popup__icon {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 5px;
+}
+
+.docode-popup__identity {
+  display: grid;
+  min-width: 0;
+  gap: 0;
+}
+
+.docode-popup__product-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.docode-popup h1 {
+  color: #f0f0f0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  line-height: 16px;
+}
+
+.docode-popup__version {
+  border: 1px solid #3c3c3c;
+  border-radius: 3px;
+  padding: 0 3px;
+  color: #858585;
+  background: #252526;
+  font-size: 7px;
+  line-height: 11px;
+}
+
+.docode-popup__header p {
+  color: #858585;
+  font-size: 9px;
+  line-height: 12px;
+}
+
+.docode-popup h2 {
+  color: #cccccc;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 12px;
+}
+
+.docode-popup__quick-actions {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  grid-area: quick-actions;
+  gap: 3px;
+}
+
+.docode-popup__quick-actions > h2 {
+  padding: 0 1px;
+}
+
+.docode-popup__action-list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid #3c3c3c;
+  border-radius: 3px;
+  background: #252526;
+}
+
+.docode-popup__action {
+  display: grid;
+  width: 100%;
+  min-height: 29px;
+  grid-template-columns: 14px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-bottom: 1px solid #3c3c3c;
+  border-radius: 0;
+  padding: 2px 6px;
+  color: #cccccc;
+  background: transparent;
+  text-align: left;
+}
+
+.docode-popup__action:last-child {
+  border-bottom: 0;
+}
+
+.docode-popup__action > .docode-codicon:first-child {
+  color: #75beff;
+  font-size: 12px;
+}
+
+.docode-popup__action > .docode-codicon:last-child {
+  justify-self: end;
+  color: #858585;
+  font-size: 10px;
+}
+
+.docode-popup__action span {
+  display: grid;
+  min-width: 0;
+  gap: 0;
+}
+
+.docode-popup__action strong,
+.docode-popup__action small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docode-popup__action strong {
+  color: inherit;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 12px;
+}
+
+.docode-popup__action small,
+.docode-popup__action-detail {
+  color: #858585;
+  font-size: 8px;
+  line-height: 10px;
+}
+
+.docode-popup__action-detail--connected {
+  color: #4ec9b0;
+}
+
+.docode-popup__action-detail--warning {
+  color: #f48771;
+}
+
+.docode-popup__action:hover:not(:disabled) {
+  background: #2a2d2e;
+}
+
+.docode-popup__action--primary {
+  color: #ffffff;
+  background: #007acc;
+}
+
+.docode-popup__action--primary > .docode-codicon:first-child,
+.docode-popup__action--primary > .docode-codicon:last-child,
+.docode-popup__action--primary small {
+  color: #ffffff;
+}
+
+.docode-popup__action--primary:hover:not(:disabled) {
+  background: #1177bb;
+}
+
+.docode-popup__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.docode-popup__action:focus-visible {
+  outline: 1px solid #ffffff;
+  outline-offset: -2px;
+}
+
+.docode-popup__toggle {
+  position: relative;
+  display: inline-flex;
+  width: 28px;
+  height: 24px;
+  flex: none;
+  justify-self: end;
+}
+
+.docode-popup__toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  margin: -1px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.docode-popup__toggle-track {
+  position: absolute;
+  inset: 5px 0;
+  border: 1px solid #6b6b6b;
+  border-radius: 7px;
+  background: #3c3c3c;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.docode-popup__toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cccccc;
+  transition: transform 120ms ease;
+}
+
+.docode-popup__toggle input:checked + .docode-popup__toggle-track {
+  border-color: #007acc;
+  background: #007acc;
+}
+
+.docode-popup__toggle input:checked + .docode-popup__toggle-track .docode-popup__toggle-thumb {
+  background: #ffffff;
+  transform: translateX(14px);
+}
+
+.docode-popup__toggle input:focus-visible + .docode-popup__toggle-track {
+  outline: 1px solid #007acc;
+  outline-offset: 2px;
+}
+
+.docode-popup__toggle input:disabled + .docode-popup__toggle-track {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.docode-popup__statusbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 5px;
+  color: #ffffff;
+  background: #007acc;
+  font-size: 9px;
+  line-height: 18px;
+  user-select: none;
+}
+
+.docode-popup__statusbar-connection {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.docode-popup__statusbar-connection > span {
+  color: #bff4e8;
+  font-size: 7px;
+}
+
+.docode-popup__statusbar-end {
+  justify-self: end;
+  font-size: 8px;
+  letter-spacing: 0.02em;
+}
+
+@keyframes docode-popup-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docode-popup {
+    animation: none;
+  }
+
+  .docode-popup__toggle-track,
+  .docode-popup__toggle-thumb {
+    transition: none;
+  }
+}

@@ -1,0 +1,615 @@
+[data-docode-workbench-root] .docode-settings {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  height: 100%;
+  color: var(--docode-color-foreground);
+  background: var(--docode-color-editor-background);
+  font: 13px/18px var(--docode-font-family-ui);
+  overflow: hidden;
+}
+
+[data-docode-workbench-root] .docode-settings__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  margin: -1px;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-settings__header {
+  box-sizing: border-box;
+  width: min(1400px, 100%);
+  flex: 0 0 auto;
+  margin: 0 auto;
+  padding: 11px 24px 0;
+}
+
+[data-docode-workbench-root] .docode-settings__search {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 30px;
+  border: 1px solid var(--docode-color-input-border);
+  border-radius: 2px;
+  background: var(--docode-color-input-background);
+}
+
+[data-docode-workbench-root] .docode-settings__search:focus-within {
+  border-color: var(--docode-color-focus-border);
+}
+
+[data-docode-workbench-root] .docode-settings__search > .docode-codicon {
+  position: relative;
+  top: 1px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  height: 100%;
+  margin-left: 6px;
+  color: var(--docode-color-icon-foreground);
+}
+
+[data-docode-workbench-root][data-docode-workbench-root] .docode-settings__search input {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  padding: 0 6px;
+  border: 0;
+  outline: 0;
+  color: var(--docode-color-input-foreground);
+  background: transparent;
+  font: inherit;
+}
+
+[data-docode-workbench-root] .docode-settings__search input::placeholder {
+  color: var(--docode-color-input-placeholder);
+}
+
+[data-docode-workbench-root] .docode-settings__header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 30px;
+  padding: 6px 0 0;
+}
+
+[data-docode-workbench-root] .docode-settings__result-count {
+  padding: 2px 8px;
+  border-radius: 11px;
+  color: var(--docode-color-badge-foreground);
+  background: var(--docode-color-badge-background);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-settings__clear,
+[data-docode-workbench-root] .docode-settings__row-toolbar button {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--docode-color-icon-foreground);
+  background: transparent;
+}
+
+[data-docode-workbench-root] .docode-settings__clear {
+  margin-right: 4px;
+}
+
+[data-docode-workbench-root] .docode-settings__clear:hover,
+[data-docode-workbench-root] .docode-settings__row-toolbar button:not(:disabled):hover {
+  background: var(--docode-color-toolbar-hover-background);
+}
+
+[data-docode-workbench-root] .docode-settings__body {
+  display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-columns: 200px minmax(0, 1fr);
+  width: min(1400px, 100%);
+  margin: 10px auto 0;
+  overflow: hidden;
+}
+
+[data-docode-workbench-root] .docode-settings__toc {
+  min-width: 100px;
+  padding: 0 10px 24px 16px;
+  overflow: auto;
+  scrollbar-color: var(--docode-color-scrollbar-slider) transparent;
+}
+
+[data-docode-workbench-root] .docode-settings__toc-item {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 22px;
+  padding: 0 8px 0 0;
+  gap: 4px;
+  cursor: pointer;
+  border: 0;
+  outline: 0;
+  color: var(--docode-color-foreground);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+
+[data-docode-workbench-root] .docode-settings__toc-twistie {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 16px;
+  height: 22px;
+  color: var(--docode-color-icon-foreground);
+}
+
+[data-docode-workbench-root] .docode-settings__toc-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-settings__toc-item:hover {
+  background: var(--docode-color-list-hover-background);
+}
+
+[data-docode-workbench-root] .docode-settings__toc-item:focus-visible {
+  outline: 1px solid var(--docode-color-focus-border);
+  outline-offset: -1px;
+}
+
+[data-docode-workbench-root] .docode-settings__toc-item--active {
+  color: var(--docode-color-settings-header-foreground);
+  font-weight: 600;
+}
+
+[data-docode-workbench-root] .docode-settings__toc-item--nested {
+  padding-left: 20px;
+}
+
+[data-docode-workbench-root] .docode-settings__content {
+  min-width: 0;
+  padding: 0 24px 40px 32px;
+  overflow: auto;
+  scrollbar-color: var(--docode-color-scrollbar-slider) transparent;
+}
+
+[data-docode-workbench-root] .docode-settings__group {
+  scroll-margin-top: 8px;
+}
+
+[data-docode-workbench-root] .docode-settings__group h2 {
+  margin: 0;
+  padding: 12px 14px 6px;
+  color: var(--docode-color-settings-header-foreground);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 30px;
+}
+
+[data-docode-workbench-root] .docode-settings__row {
+  position: relative;
+  box-sizing: border-box;
+  padding: 12px 14px 18px;
+}
+
+[data-docode-workbench-root] .docode-settings__row:hover {
+  background: var(--docode-color-settings-row-hover-background);
+}
+
+[data-docode-workbench-root] .docode-settings__row:focus-within {
+  background: var(--docode-color-settings-focused-row-background);
+  box-shadow: inset 2px 0 var(--docode-color-settings-focused-row-border);
+}
+
+[data-docode-workbench-root] .docode-settings__row[data-modified='true']::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: var(--docode-color-settings-modified-item-indicator);
+  content: '';
+}
+
+[data-docode-workbench-root] .docode-settings__row-toolbar {
+  position: absolute;
+  top: 10px;
+  left: -22px;
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+}
+
+[data-docode-workbench-root] .docode-settings__row:hover .docode-settings__row-toolbar,
+[data-docode-workbench-root] .docode-settings__row:focus-within .docode-settings__row-toolbar {
+  opacity: 1;
+}
+
+[data-docode-workbench-root] .docode-settings__row-toolbar button:disabled {
+  visibility: hidden;
+}
+
+[data-docode-workbench-root] .docode-settings__row-title {
+  color: var(--docode-color-settings-header-foreground);
+  font-weight: 600;
+}
+
+[data-docode-workbench-root] .docode-settings__row-description {
+  margin-top: 3px;
+  color: var(--docode-color-description-foreground);
+}
+
+[data-docode-workbench-root] .docode-settings__control {
+  margin-top: 9px;
+}
+
+[data-docode-workbench-root][data-docode-workbench-root]
+  .docode-settings__control
+  input[type='text'] {
+  box-sizing: border-box;
+  width: min(320px, 100%);
+  height: 26px;
+  padding: 2px 8px;
+  border: 1px solid var(--docode-color-input-border);
+  border-radius: 2px;
+  outline: 0;
+  color: var(--docode-color-input-foreground);
+  background: var(--docode-color-input-background);
+  font: inherit;
+}
+
+[data-docode-workbench-root][data-docode-workbench-root]
+  .docode-settings__control
+  input:focus-visible {
+  border-color: var(--docode-color-focus-border);
+}
+
+[data-docode-workbench-root] .docode-settings__select {
+  position: relative;
+  width: min(360px, 100%);
+}
+
+[data-docode-workbench-root] .docode-settings__select-trigger {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--docode-color-dropdown-border);
+  border-radius: 2px;
+  outline: 0;
+  color: var(--docode-color-dropdown-foreground);
+  background: var(--docode-color-dropdown-background);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+[data-docode-workbench-root] .docode-settings__select-trigger:focus-visible {
+  border-color: var(--docode-color-focus-border);
+}
+
+[data-docode-workbench-root] .docode-settings__select-value {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-settings__select-trigger > .docode-codicon {
+  flex: 0 0 auto;
+  margin-left: 8px;
+  color: var(--docode-color-icon-foreground);
+}
+
+[data-docode-workbench-root] .docode-settings__select-dropdown {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% - 1px);
+  right: 0;
+  left: 0;
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  border: 1px solid var(--docode-color-dropdown-border);
+  border-radius: 0 0 var(--docode-corner-radius-medium) var(--docode-corner-radius-medium);
+  background: var(--docode-color-dropdown-list-background);
+  box-shadow: var(--docode-shadow-lg);
+}
+
+[data-docode-workbench-root] .docode-settings__select-list {
+  padding: 2px 0;
+  overflow: hidden;
+}
+
+[data-docode-workbench-root] .docode-settings__select-option {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 0 10px 0 8px;
+  color: var(--docode-color-dropdown-foreground);
+  cursor: pointer;
+}
+
+[data-docode-workbench-root] .docode-settings__select-option[data-active='true'] {
+  color: var(--docode-color-list-active-selection-foreground);
+  background: var(--docode-color-list-active-selection-background);
+}
+
+[data-docode-workbench-root] .docode-settings__select-option-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-settings__select-option-default {
+  flex: 0 0 auto;
+  margin-left: 12px;
+  color: var(--docode-color-link-foreground);
+}
+
+[data-docode-workbench-root] .docode-settings__select-details {
+  padding: 6px 8px 7px;
+  color: var(--docode-color-description-foreground);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+[data-docode-workbench-root] .docode-settings__color-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  gap: 6px;
+}
+
+[data-docode-workbench-root] .docode-settings__color-swatch {
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--docode-color-input-border);
+  border-radius: 2px;
+  outline: 0;
+  cursor: pointer;
+}
+
+[data-docode-workbench-root] .docode-settings__color-swatch:focus-visible {
+  border-color: var(--docode-color-focus-border);
+}
+
+[data-docode-workbench-root][data-docode-workbench-root]
+  .docode-settings__color-control
+  input[type='text'] {
+  width: 110px;
+  height: 26px;
+  margin: 0;
+  font-family: var(--docode-font-family-monospace);
+}
+
+[data-docode-workbench-root] .docode-settings__color-popup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  box-sizing: border-box;
+  width: 232px;
+  padding: 6px;
+  border: 1px solid var(--docode-color-menu-border);
+  border-radius: var(--docode-corner-radius-medium);
+  background: var(--docode-color-menu-background);
+  box-shadow: var(--docode-shadow-lg);
+}
+
+[data-docode-workbench-root] .docode-settings__color-area {
+  position: relative;
+  height: 130px;
+  border-radius: 2px;
+  outline: 0;
+  background:
+    linear-gradient(to top, #000000, #00000000),
+    linear-gradient(to right, #ffffff, var(--docode-color-picker-hue));
+  cursor: crosshair;
+  touch-action: none;
+}
+
+[data-docode-workbench-root] .docode-settings__color-area:focus-visible {
+  box-shadow: 0 0 0 1px var(--docode-color-focus-border);
+}
+
+[data-docode-workbench-root] .docode-settings__color-area-handle {
+  position: absolute;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  margin: -6px 0 0 -6px;
+  box-shadow: 0 0 0 1px #00000066;
+  pointer-events: none;
+}
+
+[data-docode-workbench-root] .docode-settings__color-hue {
+  position: relative;
+  height: 12px;
+  margin-top: 6px;
+  border-radius: 2px;
+  outline: 0;
+  background: linear-gradient(
+    to right,
+    #ff0000,
+    #ffff00,
+    #00ff00,
+    #00ffff,
+    #0000ff,
+    #ff00ff,
+    #ff0000
+  );
+  cursor: pointer;
+  touch-action: none;
+}
+
+[data-docode-workbench-root] .docode-settings__color-hue:focus-visible {
+  box-shadow: 0 0 0 1px var(--docode-color-focus-border);
+}
+
+[data-docode-workbench-root] .docode-settings__color-hue-handle {
+  position: absolute;
+  top: -2px;
+  box-sizing: border-box;
+  width: 8px;
+  height: 16px;
+  border: 2px solid #ffffff;
+  border-radius: 2px;
+  margin-left: -4px;
+  box-shadow: 0 0 0 1px #00000066;
+  pointer-events: none;
+}
+
+[data-docode-workbench-root] .docode-settings__color-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+[data-docode-workbench-root] .docode-settings__color-preview > span:first-child {
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--docode-color-input-border);
+  border-radius: 2px;
+}
+
+[data-docode-workbench-root] .docode-settings__color-preview-value {
+  color: var(--docode-color-description-foreground);
+  font-family: var(--docode-font-family-monospace);
+  font-size: 11px;
+}
+
+[data-docode-workbench-root] .docode-settings__checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--docode-color-foreground);
+}
+
+[data-docode-workbench-root] .docode-settings__checkbox-label > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+[data-docode-workbench-root] .docode-settings__checkbox {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--docode-color-checkbox-border);
+  border-radius: 3px;
+  color: var(--docode-color-button-foreground);
+  background: var(--docode-color-checkbox-background);
+}
+
+[data-docode-workbench-root]
+  .docode-settings__checkbox-label
+  > input:checked
+  + .docode-settings__checkbox {
+  border-color: var(--docode-color-button-background);
+  background: var(--docode-color-button-background);
+}
+
+[data-docode-workbench-root]
+  .docode-settings__checkbox-label
+  > input:focus-visible
+  + .docode-settings__checkbox {
+  outline: 1px solid var(--docode-color-focus-border);
+  outline-offset: 2px;
+}
+
+[data-docode-workbench-root] .docode-settings__empty {
+  padding: 24px 14px;
+  color: var(--docode-color-description-foreground);
+  font-size: 16px;
+}
+
+[data-docode-workbench-root] .docode-workbench__settings-tab {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 180px;
+  height: 100%;
+  padding: 0 6px 0 10px;
+  border-top: 1px solid var(--docode-color-tab-active-border-top);
+  border-right: 1px solid var(--docode-color-tab-border);
+  color: var(--docode-color-tab-active-foreground);
+  background: var(--docode-color-tab-active-background);
+}
+
+[data-docode-workbench-root] .docode-workbench__settings-tab > .docode-codicon {
+  margin-right: 6px;
+}
+
+[data-docode-workbench-root] .docode-workbench__settings-tab-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-workbench__settings-tab-close {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: inherit;
+  background: transparent;
+}
+
+[data-docode-workbench-root] .docode-workbench__settings-tab-close:hover {
+  background: var(--docode-color-toolbar-hover-background);
+}
+
+@media (max-width: 700px) {
+  [data-docode-workbench-root] .docode-settings__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-docode-workbench-root] .docode-settings__toc {
+    display: none;
+  }
+
+  [data-docode-workbench-root] .docode-settings__content {
+    padding-left: 24px;
+  }
+
+  [data-docode-workbench-root] .docode-settings__row-toolbar {
+    left: -10px;
+  }
+}
