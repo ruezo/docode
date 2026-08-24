@@ -29,6 +29,7 @@ import { LinuxDoViewStateObserver } from '../linuxdo/viewStateObserver';
 import { CleanupRegistry, type Cleanup } from './cleanupRegistry';
 import { GenerationClock } from './generationClock';
 import { hasPresentationOwnershipMarker, NativePresentation } from './nativePresentation';
+import { TabDisguise } from './tabDisguise';
 import { DEFAULT_SIDEBAR_WIDTH } from '../settings/workbenchLayoutPreference';
 import {
   DEFAULT_WORKBENCH_APPEARANCE,
@@ -74,6 +75,7 @@ export class ContentRuntime {
   readonly #markerToken = globalThis.crypto.randomUUID();
   readonly #presentation: NativePresentation;
   readonly #routeObserver: LinuxDoRouteObserver | null;
+  readonly #tabDisguise: TabDisguise;
   readonly #viewStateObserver: LinuxDoViewStateObserver;
   readonly #workbench: MountedWorkbench | null;
   #mounted = true;
@@ -137,9 +139,18 @@ export class ContentRuntime {
     this.#cleanups.add(() => {
       this.#viewStateObserver.stop();
     });
+    this.#tabDisguise = new TabDisguise(
+      document,
+      isLinuxDoLocation(document.location) ? recognizeLinuxDoRoute(document.location.href) : null,
+    );
+    this.#tabDisguise.start();
+    this.#cleanups.add(() => {
+      this.#tabDisguise.stop();
+    });
     if (this.#routeObserver) {
       this.#routeObserver.subscribe((change) => {
         this.#viewStateObserver.refresh();
+        this.#tabDisguise.updateRoute(change.current);
         this.#workbench?.updateRoute(change.current, change.generation, change.source);
         if (change.source !== 'initial') {
           this.#capabilityGeneration.invalidate();
