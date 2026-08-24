@@ -94,7 +94,12 @@ import type { TopicScrollRequest, TopicViewportState } from '../../views/topic/t
 import {
   TopicListEditorSurface,
   type ReadyTopicListDocument,
+  type TopicListScrollRequest,
 } from '../../views/topicList/TopicListDocumentView';
+import {
+  createTopicListViewportMemory,
+  getTopicListViewportStorage,
+} from '../../views/topicList/topicListViewportMemory';
 import {
   mergeReadyTopicListDocuments,
   type TopicListDocument,
@@ -345,6 +350,9 @@ export function WorkbenchShell({
   const appearanceWriteRevision = useRef(0);
   const routeNavigationController = useRef<AbortController | null>(null);
   const topicListPaginationController = useRef<AbortController | null>(null);
+  const [topicListViewportMemory] = useState(() =>
+    createTopicListViewportMemory(getTopicListViewportStorage(window)),
+  );
   const topicPaginationController = useRef<AbortController | null>(null);
   const composerWasVisible = useRef(isNativeComposerVisible(nativeComposer));
   const workbenchElement = useRef<HTMLDivElement>(null);
@@ -407,8 +415,14 @@ export function WorkbenchShell({
     };
   }, [hasMorePosts, topicDetailDocument]);
   const topicOverviewBase = useMemo(
-    () => (topicOverviewDocument ? createTopicOverviewBaseModels(topicOverviewDocument) : null),
-    [topicOverviewDocument],
+    () =>
+      topicOverviewDocument
+        ? createTopicOverviewBaseModels(
+            topicOverviewDocument,
+            getTopicReadingMode(modeState, navigationState.activeViewId),
+          )
+        : null,
+    [modeState, navigationState.activeViewId, topicOverviewDocument],
   );
   const topicOverview = useMemo(
     () =>
@@ -771,6 +785,34 @@ export function WorkbenchShell({
     },
     [topicId],
   );
+
+  const readyTopicListHref = readyTopicList?.route.href ?? null;
+  const trackTopicListViewport = useCallback(
+    (scrollTop: number) => {
+      if (readyTopicListHref === null) return;
+      topicListViewportMemory.track(readyTopicListHref, scrollTop);
+    },
+    [readyTopicListHref, topicListViewportMemory],
+  );
+
+  const topicListScrollRequest = useMemo<TopicListScrollRequest | null>(
+    () =>
+      readyTopicListHref === null
+        ? null
+        : { scrollTop: topicListViewportMemory.read(readyTopicListHref), sequence: 1 },
+    [readyTopicListHref, topicListViewportMemory],
+  );
+
+  useEffect(() => {
+    const flush = () => {
+      topicListViewportMemory.flush();
+    };
+    window.addEventListener('pagehide', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
+  }, [readyTopicListHref, topicListViewportMemory]);
 
   const trackTopicViewport = useCallback(
     (viewport: TopicViewportState) => {
@@ -1728,8 +1770,9 @@ export function WorkbenchShell({
                       loadingMoreTopics={loadingMoreTopics}
                       onNavigateTopic={navigateTopicFromList}
                       onRequestMoreTopics={requestMoreTopics}
+                      onViewportChange={trackTopicListViewport}
                       platform={keybindingPlatform}
-                      scrollRequest={null}
+                      scrollRequest={topicListScrollRequest}
                     />
                   ) : readyTopicDetail && nativeContentTransfer ? (
                     <TopicCodeEditorSurface

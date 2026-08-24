@@ -33,7 +33,7 @@ interface TopicListEditorSurfaceProps {
   readonly scrollRequest?: TopicListScrollRequest | null;
 }
 
-interface TopicListScrollRequest {
+export interface TopicListScrollRequest {
   readonly scrollTop: number;
   readonly sequence: number;
 }
@@ -56,14 +56,6 @@ export function TopicListEditorSurface({
   const scrollContainer = useRef<HTMLDivElement>(null);
   const selectedLine = document.lines.find(({ topicId }) => topicId === selectedTopicId);
   const activeTopicId = selectedLine?.topicId ?? document.lines[0]?.topicId ?? null;
-
-  useEffect(() => {
-    if (scrollContainer.current) {
-      scrollContainer.current.scrollLeft = 0;
-      scrollContainer.current.scrollTop = 0;
-    }
-    if (gutterContent.current) gutterContent.current.style.transform = 'translate3d(0, 0, 0)';
-  }, [document.route.href]);
 
   useEffect(() => {
     const ownerDocument = scrollContainer.current?.ownerDocument;
@@ -93,6 +85,7 @@ export function TopicListEditorSurface({
   useLayoutEffect(() => {
     const scroll = scrollContainer.current;
     if (!scrollRequest || !scroll) return;
+    scroll.scrollLeft = 0;
     scroll.scrollTop = scrollRequest.scrollTop;
     if (gutterContent.current) {
       gutterContent.current.style.transform = `translate3d(0, -${String(scroll.scrollTop)}px, 0)`;

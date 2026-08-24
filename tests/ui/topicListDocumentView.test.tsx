@@ -178,6 +178,39 @@ describe('TopicListEditorSurface', () => {
     expect(gutterContent.style.transform).toBe('translate3d(0, -96px, 0)');
   });
 
+  it('applies viewport restore requests and keeps the position across document updates', () => {
+    const { container, rerender } = render(
+      <TopicListEditorSurface
+        document={readyDocument([topic({ id: 42 })])}
+        scrollRequest={{ scrollTop: 240, sequence: 1 }}
+      />,
+    );
+    const scroll = screen.getByRole('list', { name: 'Topic list document' });
+    expect(scroll.scrollTop).toBe(240);
+    const gutterContent = container.querySelector<HTMLElement>(
+      '.docode-topic-list__gutter-content',
+    );
+    if (!gutterContent) throw new Error('Expected the topic-list gutter content.');
+    expect(gutterContent.style.transform).toBe('translate3d(0, -240px, 0)');
+
+    rerender(
+      <TopicListEditorSurface
+        document={readyDocument([topic({ id: 42 }), topic({ id: 43, title: 'Merged page' })])}
+        scrollRequest={{ scrollTop: 240, sequence: 1 }}
+      />,
+    );
+    expect(scroll.scrollTop).toBe(240);
+
+    rerender(
+      <TopicListEditorSurface
+        document={readyDocument([topic({ id: 42 }), topic({ id: 43, title: 'Merged page' })])}
+        scrollRequest={{ scrollTop: 0, sequence: 2 }}
+      />,
+    );
+    expect(scroll.scrollTop).toBe(0);
+    expect(gutterContent.style.transform).toBe('translate3d(0, -0px, 0)');
+  });
+
   it('requests another real page only when scrolling near the document end', () => {
     const onRequestMoreTopics = vi.fn();
     const { rerender } = render(
