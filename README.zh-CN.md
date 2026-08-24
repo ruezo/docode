@@ -51,7 +51,7 @@ public class LinuxDo {
 
 ```bash
 npm ci
-npm run package:extension   # 产物在 .output/chrome-mv3
+npm run package:extension
 ```
 
 1. 打开 `chrome://extensions`，启用**开发者模式**。

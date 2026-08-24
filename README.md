@@ -52,7 +52,7 @@ Grab `docode-x.y.z-chrome.zip` from the latest release and unzip it — or build
 
 ```bash
 npm ci
-npm run package:extension   # writes .output/chrome-mv3
+npm run package:extension
 ```
 
 1. Open `chrome://extensions` and enable **Developer mode**.
