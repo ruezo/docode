@@ -715,83 +715,6 @@
   font: 12px/20px var(--docode-font-family-ui);
 }
 
-[data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='doc']
-  .docode-topic-code__topic-header {
-  padding-top: 18px;
-}
-
-[data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='doc']
-  .docode-topic-code__topic-heading {
-  padding-bottom: 16px;
-}
-
-[data-docode-workbench-root] .docode-topic-code__doc-title {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  font-family: var(--docode-font-family-ui);
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 28px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-[data-docode-workbench-root] .docode-topic-code__doc-title .docode-topic-code__title {
-  color: var(--docode-color-editor-foreground);
-}
-
-[data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='doc']
-  .docode-topic-code__reply-body {
-  padding-top: 18px;
-  padding-bottom: 24px;
-}
-
-[data-docode-workbench-root] .docode-topic-code__doc-byline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: baseline;
-  min-width: 0;
-  font-family: var(--docode-font-family-ui);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 22px;
-}
-
-[data-docode-workbench-root] .docode-topic-code__doc-byline > span {
-  color: var(--docode-color-description-foreground);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-[data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='doc']
-  .docode-topic-code__doc-byline
-  .docode-topic-code__author {
-  color: var(--docode-color-editor-foreground);
-}
-
-[data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='doc']
-  .docode-topic-code__content-indent {
-  max-width: 880px;
-  padding-top: 6px;
-  padding-left: 0;
-  border-left: 0;
-}
-
-[data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='doc']
-  .docode-topic-code__content-slot
-  > .cooked {
-  font-size: 15px;
-  line-height: 24px;
-}
-
 [data-docode-workbench-root] .docode-topic-code__reply-close,
 [data-docode-workbench-root] .docode-topic-code__topic-close code {
   color: var(--docode-color-editor-foreground);
@@ -835,29 +758,23 @@
   [data-docode-workbench-root] .docode-topic-code__content-indent {
     padding-left: 10px;
   }
-
-  [data-docode-workbench-root]
-    .docode-topic-code__surface[data-mode='doc']
-    .docode-topic-code__content-indent {
-    padding-left: 0;
-  }
 }
 
 /* Code mode maps forum structure onto actual 20px editor lines. */
-[data-docode-workbench-root] .docode-topic-code__surface[data-mode='code'] {
+[data-docode-workbench-root] .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc']) {
   --docode-topic-gutter-width: 56px;
   --docode-topic-content-indent: 16px;
   --docode-topic-line-height: 20px;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   :is(.docode-topic-code__topic-header, .docode-topic-code__reply) {
   position: relative;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   :is(.docode-topic-code__topic-header, .docode-topic-code__reply)::before {
   position: absolute;
   inset: 0 auto 0 0;
@@ -869,13 +786,13 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__topic-header {
   padding-top: 0;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__topic-gutter {
   z-index: 1;
   align-self: start;
@@ -889,58 +806,58 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__topic-heading {
   padding: 0 24px 0 var(--docode-topic-content-indent);
   border-bottom: 0;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__heading-row,
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__signature {
   height: var(--docode-topic-line-height);
   line-height: var(--docode-topic-line-height);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__heading-row {
   align-items: center;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply {
   align-items: start;
   border-bottom: 0;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply[data-requested='true'],
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply[data-active='true'] {
   background: transparent;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply[data-active='true'] {
   box-shadow: none;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply:focus-visible {
   outline: 0;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply-gutter {
   z-index: 1;
   align-self: start;
@@ -950,7 +867,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__floor {
   position: absolute;
   inset: 0 0 auto;
@@ -962,14 +879,14 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply[data-annotated='true']
   .docode-topic-code__floor {
   inset: var(--docode-topic-line-height) 0 auto;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__fold {
   --docode-icon-size: 12px;
 
@@ -992,20 +909,20 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply:is(:hover, :focus-within, [data-active='true'], [data-collapsed='true'])
   .docode-topic-code__fold {
   opacity: 1;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__fold:hover {
   color: var(--docode-color-editor-line-number-active);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__fold:focus-visible {
   outline: 1px solid var(--docode-color-focus-border);
   outline-offset: -2px;
@@ -1013,7 +930,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply-body {
   position: relative;
   min-width: max-content;
@@ -1023,13 +940,13 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply-header {
   margin-bottom: 0;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__metadata {
   position: relative;
   flex-wrap: nowrap;
@@ -1042,7 +959,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply-metadata {
   gap: 0 6px;
   padding-left: var(--docode-topic-content-indent);
@@ -1050,25 +967,25 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__comment-marker {
   color: var(--docode-color-token-comment);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__metadata-separator {
   opacity: 0.72;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__unread-annotation {
   color: var(--docode-color-editor-info-foreground);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__editor-line {
   position: relative;
   height: var(--docode-topic-line-height);
@@ -1079,7 +996,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__topic-metadata {
   padding-left: var(--docode-topic-content-indent);
   color: var(--docode-color-description-foreground);
@@ -1094,14 +1011,14 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__heading-row
   .docode-topic-code__title {
   color: var(--docode-color-token-category);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply-actions {
   position: absolute;
   z-index: 4;
@@ -1111,7 +1028,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__action-strip {
   flex-wrap: nowrap;
   height: var(--docode-topic-line-height);
@@ -1130,7 +1047,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply:is(:hover, :focus-within)
   .docode-topic-code__action-strip {
   visibility: visible;
@@ -1139,13 +1056,13 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__action-state {
   display: none;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   :is(.docode-topic-code__permalink-action, .docode-topic-code__action-capability) {
   min-height: var(--docode-topic-line-height);
   padding-top: 0;
@@ -1153,14 +1070,14 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__more-actions {
   width: var(--docode-topic-line-height);
   height: var(--docode-topic-line-height);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-indent {
   min-width: max-content;
   padding: 0 0 0 var(--docode-topic-content-indent);
@@ -1168,19 +1085,19 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__fold-placeholder {
   color: var(--docode-color-description-foreground);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot {
   position: relative;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply-target-line {
   height: var(--docode-topic-line-height);
   min-height: var(--docode-topic-line-height);
@@ -1307,7 +1224,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked {
   display: block;
@@ -1320,7 +1237,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(a.mention, a.mention-group) {
@@ -1339,7 +1256,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(a.mention, a.mention-group):is(:hover, :active) {
@@ -1350,7 +1267,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(a.mention, a.mention-group):focus-visible {
@@ -1359,7 +1276,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   [data-docode-editor-line-kind='text'] {
@@ -1367,7 +1284,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   [data-docode-editor-line-kind='text']::before {
@@ -1377,7 +1294,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   [data-docode-editor-line-kind='text']::after {
@@ -1387,17 +1304,17 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(p, ul, ol, blockquote, pre, table, details, figure, .onebox),
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(h1, h2, h3, h4, h5, h6),
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   hr {
@@ -1405,7 +1322,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(h1, h2, h3, h4, h5, h6) {
@@ -1416,7 +1333,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(p, h1, h2, h3, h4, h5, h6, pre, figure, hr, .onebox) {
@@ -1427,7 +1344,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(ul, ol) {
@@ -1436,7 +1353,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   li {
@@ -1445,7 +1362,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   blockquote {
@@ -1453,7 +1370,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   blockquote
@@ -1464,7 +1381,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   aside.quote {
@@ -1479,7 +1396,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   aside.quote
@@ -1502,7 +1419,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   aside.quote
@@ -1516,7 +1433,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   aside.quote
@@ -1530,7 +1447,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   .onebox {
@@ -1544,7 +1461,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   .onebox
@@ -1554,7 +1471,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   pre {
@@ -1565,7 +1482,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   tr {
@@ -1573,7 +1490,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   :is(th, td) {
@@ -1584,7 +1501,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   details
@@ -1597,7 +1514,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   hr {
@@ -1612,13 +1529,13 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__signature {
   position: relative;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   :is(
     .docode-topic-code__metadata,
     .docode-topic-code__editor-line,
@@ -1630,7 +1547,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   :is(
     .docode-topic-code__metadata,
     .docode-topic-code__editor-line,
@@ -1653,13 +1570,13 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__annotation-line {
   z-index: 2;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply
   :is(
     .docode-topic-code__metadata,
@@ -1670,7 +1587,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-indent
   :is(
     .docode-topic-code__editor-line,
@@ -1681,7 +1598,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   :is(
     .docode-topic-code__signature,
     .docode-topic-code__metadata,
@@ -1697,7 +1614,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__active-line::before {
   color: var(--docode-color-editor-line-number-active);
 }
@@ -1707,7 +1624,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__line-number-layer {
   position: absolute;
   z-index: 2;
@@ -1719,7 +1636,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__active-line-overlay {
   position: absolute;
   z-index: 0;
@@ -1734,13 +1651,13 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__active-line-overlay[hidden] {
   display: none;
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked {
   position: relative;
@@ -1748,7 +1665,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__content-slot
   > .cooked
   [data-docode-editor-line] {
@@ -1756,7 +1673,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__line-number {
   position: absolute;
   top: 0;
@@ -1773,13 +1690,13 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__line-number--active {
   color: var(--docode-color-editor-line-number-active);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__reply-close {
   height: var(--docode-topic-line-height);
   padding-top: 0;
@@ -1787,14 +1704,14 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__topic-close {
   position: relative;
   min-height: var(--docode-topic-line-height);
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__topic-close::before {
   position: absolute;
   inset: 0 auto 0 0;
@@ -1809,7 +1726,7 @@
 }
 
 [data-docode-workbench-root]
-  .docode-topic-code__surface[data-mode='code']
+  .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
   .docode-topic-code__topic-close
   code {
   display: block;
@@ -2037,22 +1954,23 @@
 }
 
 @media (max-width: 720px) {
-  [data-docode-workbench-root] .docode-topic-code__surface[data-mode='code'] {
+  [data-docode-workbench-root]
+    .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc']) {
     --docode-topic-gutter-width: 36px;
     --docode-topic-content-indent: 10px;
   }
 
   [data-docode-workbench-root]
-    .docode-topic-code__surface[data-mode='code']
+    .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
     .docode-topic-code__topic-gutter,
   [data-docode-workbench-root]
-    .docode-topic-code__surface[data-mode='code']
+    .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
     .docode-topic-code__floor {
     padding-right: 8px;
   }
 
   [data-docode-workbench-root]
-    .docode-topic-code__surface[data-mode='code']
+    .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
     :is(
       .docode-topic-code__metadata,
       .docode-topic-code__editor-line,
@@ -2061,8 +1979,138 @@
       .docode-topic-code__missing-content
     )::before,
   [data-docode-workbench-root]
-    .docode-topic-code__surface[data-mode='code']
+    .docode-topic-code__surface:is([data-mode='code'], [data-mode='doc'])
     .docode-topic-code__line-number {
     width: calc(var(--docode-topic-gutter-width) - 8px);
   }
+}
+
+/* Doc mode renders the topic as a Markdown source document on the same grid. */
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__reply-body {
+  padding-left: var(--docode-topic-content-indent);
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__content-indent {
+  padding-left: 0;
+  border-left: 0;
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__reply
+  :is(
+    .docode-topic-code__metadata,
+    .docode-topic-code__reply-close,
+    .docode-topic-code__annotation-line
+  )::before,
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__content-indent
+  :is(
+    .docode-topic-code__editor-line,
+    .docode-topic-code__missing-content,
+    .docode-topic-code__reply-target-line
+  )::before {
+  left: calc(0px - var(--docode-topic-gutter-width) - var(--docode-topic-content-indent));
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__line-number {
+  left: calc(0px - var(--docode-topic-gutter-width) - var(--docode-topic-content-indent));
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__content-slot
+  > .cooked
+  [data-docode-editor-line-kind='text']::before,
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__content-slot
+  > .cooked
+  [data-docode-editor-line-kind='text']::after {
+  content: none;
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__reply[data-doc-section='true']
+  .docode-topic-code__floor {
+  inset: calc(var(--docode-topic-line-height) * 2) 0 auto;
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__reply[data-doc-section='true']
+  .docode-topic-code__reply-actions {
+  top: calc(var(--docode-topic-line-height) * 2);
+}
+
+[data-docode-workbench-root] .docode-topic-code__md-heading {
+  color: var(--docode-color-token-declaration);
+  font-weight: 600;
+}
+
+[data-docode-workbench-root] .docode-topic-code__md-heading a,
+[data-docode-workbench-root] .docode-topic-code__md-heading time,
+[data-docode-workbench-root] .docode-topic-code__md-heading .docode-topic-code__md-marker {
+  color: inherit;
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__heading-row
+  .docode-topic-code__title {
+  color: inherit;
+}
+
+[data-docode-workbench-root] .docode-topic-code__md-heading a:is(:hover, :focus-visible) {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+[data-docode-workbench-root] .docode-topic-code__md-quote-marker {
+  color: var(--docode-color-token-comment);
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__topic-metadata {
+  color: var(--docode-color-token-comment);
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__topic-metadata
+  a {
+  color: inherit;
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  :is(.docode-topic-code__reply-target-floor, .docode-topic-code__reply-target-author) {
+  color: var(--docode-color-token-comment);
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__md-section {
+  z-index: 2;
+}
+
+[data-docode-workbench-root] .docode-topic-code__md-heading a {
+  text-decoration: none;
+}
+
+[data-docode-workbench-root]
+  .docode-topic-code__surface[data-mode='doc']
+  .docode-topic-code__content-slot
+  > .cooked
+  [data-docode-editor-line-kind='text'] {
+  color: var(--docode-color-editor-foreground);
 }

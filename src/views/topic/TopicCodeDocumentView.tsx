@@ -27,6 +27,14 @@ import type { TopicDetailDocument, TopicReplyDocumentBlock } from './topicDetail
 import { presentNativeContent, summarizeNativeContentLines } from './nativeContentPresentation';
 import { createReplyMethodName } from './topicJavaSource';
 import {
+  createDocReplyHeadingLabel,
+  createFallbackDocReplyLineLayout,
+  createTopicDocLineLayout,
+  TOPIC_DOC_HEADER_LINES,
+  TOPIC_DOC_REPLIES_SECTION_LABEL,
+  type TopicDocReplyLineLayout,
+} from './topicDocLineLayout';
+import {
   createFallbackReplyLineLayout,
   createTopicLineLayout,
   TOPIC_HEADER_LINES,
@@ -167,6 +175,7 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
       ? activeReply.id
       : preferredActiveReplyId;
   const lineLayout = useMemo(() => createTopicLineLayout(document), [document]);
+  const docLineLayout = useMemo(() => createTopicDocLineLayout(document), [document]);
   const repliesByFloor = useMemo(
     () => new Map(document.replies.map((reply) => [reply.floor.number, reply])),
     [document.replies],
@@ -542,6 +551,7 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
     const element = target ? replyElements.current.get(target.id) : undefined;
     if (!target || !element) return;
     appliedFocusRequestSequence.current = focusRequest.sequence;
+    lockViewportActiveTracking();
     setActiveReply({ id: target.id, topicId: document.topic.id, userDriven: true });
     if (surface.current) scrollElementIntoSurface(surface.current, element, 'nearest');
     element.focus({ preventScroll: true });
@@ -551,6 +561,7 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
     document.route.postNumber,
     document.topic.id,
     focusRequest,
+    lockViewportActiveTracking,
   ]);
 
   useLayoutEffect(() => {
@@ -692,6 +703,9 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
             active={reply.id === resolvedActiveReplyId}
             collapsed={collapsedReplyIds.has(reply.id)}
             key={`${String(reply.id)}:${String(reply.floor.number)}`}
+            docLineLayout={
+              docLineLayout.replies.get(reply.id) ?? createFallbackDocReplyLineLayout(reply)
+            }
             lineLayout={lineLayout.replies.get(reply.id) ?? createFallbackReplyLineLayout(reply)}
             mode={mode}
             nativeContentTransfer={nativeContentTransfer}
@@ -786,7 +800,13 @@ function TopicHeader({
               <span className="docode-topic-code__punctuation">{'{'}</span>
             </h1>
           ) : (
-            <h1 className="docode-topic-code__doc-title">
+            <h1
+              className="docode-topic-code__signature docode-topic-code__editor-line docode-topic-code__md-heading"
+              data-docode-editor-line={TOPIC_DOC_HEADER_LINES.title}
+            >
+              <span aria-hidden="true" className="docode-topic-code__md-marker">
+                {'# '}
+              </span>
               <a className="docode-topic-code__title" href={topic.url}>
                 {topic.title}
               </a>
@@ -795,13 +815,19 @@ function TopicHeader({
         </div>
         <div
           className="docode-topic-code__metadata docode-topic-code__topic-metadata"
-          data-docode-editor-line={mode === 'code' ? TOPIC_HEADER_LINES.metadata : undefined}
+          data-docode-editor-line={
+            mode === 'code' ? TOPIC_HEADER_LINES.metadata : TOPIC_DOC_HEADER_LINES.metadata
+          }
         >
           {mode === 'code' ? (
             <span aria-hidden="true" className="docode-topic-code__comment-marker">
               {'//'}
             </span>
-          ) : null}
+          ) : (
+            <span aria-hidden="true" className="docode-topic-code__md-quote-marker">
+              {'> '}
+            </span>
+          )}
           {topic.category ? (
             <a href={topic.category.url}>{topic.category.name}</a>
           ) : (
@@ -816,6 +842,13 @@ function TopicHeader({
           {topic.pinned ? <span>pinned</span> : null}
           {topic.closed ? <span>closed</span> : null}
         </div>
+        {mode === 'doc' ? (
+          <div
+            aria-hidden="true"
+            className="docode-topic-code__editor-line"
+            data-docode-editor-line={TOPIC_DOC_HEADER_LINES.blank}
+          />
+        ) : null}
       </div>
     </header>
   );
@@ -824,6 +857,7 @@ function TopicHeader({
 interface TopicReplyProps {
   readonly active: boolean;
   readonly collapsed: boolean;
+  readonly docLineLayout: TopicDocReplyLineLayout;
   readonly mode: TopicReadingMode;
   readonly nativeContentTransfer: NativeContentTransfer;
   readonly lineLayout: TopicReplyLineLayout;
@@ -848,6 +882,7 @@ interface TopicReplyProps {
 const TopicReply = memo(function TopicReply({
   active,
   collapsed,
+  docLineLayout,
   mode,
   nativeContentTransfer,
   lineLayout,
@@ -904,6 +939,9 @@ const TopicReply = memo(function TopicReply({
       data-active={active ? 'true' : undefined}
       data-annotated={mode === 'code' && lineLayout.annotation !== null ? 'true' : undefined}
       data-collapsed={codeCollapsed ? 'true' : undefined}
+      data-doc-section={
+        mode === 'doc' && docLineLayout.sectionHeading !== null ? 'true' : undefined
+      }
       data-completeness={reply.completeness}
       data-post-id={reply.id}
       data-post-number={reply.floor.number}
@@ -972,7 +1010,7 @@ const TopicReply = memo(function TopicReply({
           className="docode-topic-code__floor"
           href={reply.permalink}
         >
-          {mode === 'code' ? lineLayout.signature : reply.floor.number}
+          {mode === 'code' ? lineLayout.signature : docLineLayout.heading}
         </a>
       </div>
       <div className="docode-topic-code__reply-body">
@@ -1020,27 +1058,60 @@ const TopicReply = memo(function TopicReply({
               ) : null}
             </div>
           ) : (
-            <div className="docode-topic-code__doc-byline">
-              {reply.author ? (
-                <a className="docode-topic-code__author" href={reply.author.url}>
-                  {reply.author.displayName}
+            <>
+              {docLineLayout.sectionHeading !== null ? (
+                <>
+                  <div
+                    aria-hidden="true"
+                    className="docode-topic-code__editor-line docode-topic-code__md-heading docode-topic-code__md-section"
+                    data-docode-editor-line={docLineLayout.sectionHeading}
+                  >
+                    <span className="docode-topic-code__md-marker">{'## '}</span>
+                    {TOPIC_DOC_REPLIES_SECTION_LABEL}
+                  </div>
+                  <div
+                    aria-hidden="true"
+                    className="docode-topic-code__editor-line"
+                    data-docode-editor-line={docLineLayout.sectionBlank ?? undefined}
+                  />
+                </>
+              ) : null}
+              <div
+                className="docode-topic-code__signature docode-topic-code__md-heading"
+                data-docode-editor-line={docLineLayout.heading}
+              >
+                <span aria-hidden="true" className="docode-topic-code__md-marker">
+                  {'### '}
+                </span>
+                <a className="docode-topic-code__md-floor" href={reply.permalink}>
+                  {createDocReplyHeadingLabel(reply)}
                 </a>
-              ) : (
-                <span>Author unavailable</span>
-              )}
-              {reply.author ? <span>@{reply.author.username}</span> : null}
-            </div>
+                {reply.author ? (
+                  <>
+                    {' · '}
+                    <a className="docode-topic-code__author" href={reply.author.url}>
+                      @{reply.author.username}
+                    </a>
+                  </>
+                ) : null}
+                {reply.publishedLabel ? (
+                  <>
+                    {' · '}
+                    <time dateTime={reply.publishedAt ?? undefined}>{reply.publishedLabel}</time>
+                  </>
+                ) : null}
+                {reply.completeness === 'partial' ? <>{' · '}partially loaded</> : null}
+              </div>
+            </>
           )}
-          {!codeCollapsed ? (
+          {mode === 'code' && !codeCollapsed ? (
             <div
               className="docode-topic-code__metadata docode-topic-code__reply-metadata"
               data-docode-editor-line={lineLayout.metadata}
             >
-              {mode === 'code' ? (
-                <span aria-hidden="true" className="docode-topic-code__comment-marker">
-                  {'//'}
-                </span>
-              ) : null}
+              <span aria-hidden="true" className="docode-topic-code__comment-marker">
+                {'//'}
+              </span>
               <a href={reply.permalink}>#{reply.floor.number}</a>
               {reply.author?.displayName ? (
                 <>
@@ -1066,7 +1137,7 @@ const TopicReply = memo(function TopicReply({
                   <span>partially loaded</span>
                 </>
               ) : null}
-              {mode === 'code' && reply.readState === 'unread' ? (
+              {reply.readState === 'unread' ? (
                 <>
                   <span aria-hidden="true" className="docode-topic-code__metadata-separator">
                     ·
@@ -1080,7 +1151,7 @@ const TopicReply = memo(function TopicReply({
           ) : null}
           <div className="docode-topic-code__reply-actions">
             <PostActionStrip
-              compact={mode === 'code'}
+              compact
               menuRequest={menuRequest}
               onDismissMenu={dismissPostMenu}
               onOpenMenu={openPostMenu}
@@ -1095,7 +1166,7 @@ const TopicReply = memo(function TopicReply({
             reply.content ? (
               <NativeContentSlot
                 content={reply.content}
-                firstLine={lineLayout.contentStart}
+                firstLine={mode === 'code' ? lineLayout.contentStart : docLineLayout.contentStart}
                 nativeContentTransfer={nativeContentTransfer}
                 revision={revision}
                 root={reply.content.root}
@@ -1103,20 +1174,24 @@ const TopicReply = memo(function TopicReply({
             ) : (
               <p
                 className="docode-topic-code__missing-content"
-                data-docode-editor-line={lineLayout.contentStart}
+                data-docode-editor-line={
+                  mode === 'code' ? lineLayout.contentStart : docLineLayout.contentStart
+                }
                 role="status"
               >
                 Content is not available in the loaded Linux DO post.
               </p>
             )
           ) : null}
-          {mode === 'code' &&
-          !codeCollapsed &&
-          lineLayout.replyTarget !== null &&
+          {!codeCollapsed &&
+          (mode === 'code' ? lineLayout.replyTarget : docLineLayout.replyTarget) !== null &&
           reply.replyToPostNumber !== null ? (
             <ReplyTargetReference
               key={reply.replyToPostNumber}
-              lineNumber={lineLayout.replyTarget}
+              lineNumber={
+                (mode === 'code' ? lineLayout.replyTarget : docLineLayout.replyTarget) ?? 0
+              }
+              mode={mode}
               target={replyTarget}
               targetPostNumber={reply.replyToPostNumber}
             />
@@ -1131,6 +1206,13 @@ const TopicReply = memo(function TopicReply({
             <span className="docode-topic-code__bracket">{'}'}</span>
           </div>
         ) : null}
+        {mode === 'doc' ? (
+          <div
+            aria-hidden="true"
+            className="docode-topic-code__editor-line docode-topic-code__doc-blank"
+            data-docode-editor-line={docLineLayout.blank}
+          />
+        ) : null}
       </div>
     </article>
   );
@@ -1143,6 +1225,7 @@ function areTopicReplyPropsEqual(
   return (
     previous.active === next.active &&
     previous.collapsed === next.collapsed &&
+    previous.docLineLayout === next.docLineLayout &&
     previous.mode === next.mode &&
     previous.lineLayout === next.lineLayout &&
     previous.nativeContentTransfer === next.nativeContentTransfer &&
@@ -1482,10 +1565,12 @@ function formatReadDuration(seconds: number): string {
 
 function ReplyTargetReference({
   lineNumber,
+  mode = 'code',
   target,
   targetPostNumber,
 }: {
   readonly lineNumber: number;
+  readonly mode?: TopicReadingMode;
   readonly target: TopicReplyDocumentBlock | null;
   readonly targetPostNumber: number;
 }) {
@@ -1532,15 +1617,32 @@ function ReplyTargetReference({
         ref={registerAnchor}
         type="button"
       >
-        <span className="docode-topic-code__keyword">return</span>{' '}
-        <span className="docode-topic-code__reply-target-floor">#{targetPostNumber}</span>
-        {target?.author ? (
-          <span className="docode-topic-code__reply-target-author">
-            {' '}
-            · @{target.author.username}
-          </span>
-        ) : null}
-        <span className="docode-topic-code__punctuation">;</span>
+        {mode === 'code' ? (
+          <>
+            <span className="docode-topic-code__keyword">return</span>{' '}
+            <span className="docode-topic-code__reply-target-floor">#{targetPostNumber}</span>
+            {target?.author ? (
+              <span className="docode-topic-code__reply-target-author">
+                {' '}
+                · @{target.author.username}
+              </span>
+            ) : null}
+            <span className="docode-topic-code__punctuation">;</span>
+          </>
+        ) : (
+          <>
+            <span className="docode-topic-code__md-quote-marker">{'> '}</span>
+            <span className="docode-topic-code__reply-target-floor">
+              回复 楼 {targetPostNumber}
+            </span>
+            {target?.author ? (
+              <span className="docode-topic-code__reply-target-author">
+                {' '}
+                · @{target.author.username}
+              </span>
+            ) : null}
+          </>
+        )}
       </button>
       {open && portalHost
         ? createPortal(

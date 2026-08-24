@@ -324,12 +324,12 @@ describe('workbench commands', () => {
     const topic = topicContext('/t/synthetic-topic/42/2', 4, true);
 
     await expect(dispatch(registry, 'mode doc', topic)).resolves.toMatchObject({
-      output: { text: 'The reading mode is under development' },
+      output: { text: 'Reading mode: Doc.' },
       status: 'success',
     });
     expect(actions.setReadingMode).toHaveBeenCalledWith('doc');
     await expect(dispatch(registry, 'mode Doc', topic)).resolves.toMatchObject({
-      output: { text: 'The reading mode is under development' },
+      output: { text: 'Reading mode: Doc.' },
       status: 'success',
     });
     expect(actions.setReadingMode).toHaveBeenLastCalledWith('doc');
@@ -360,7 +360,7 @@ describe('workbench commands', () => {
       }),
     ).resolves.toMatchObject({
       commandId: WORKBENCH_COMMAND_IDS.mode,
-      output: { text: 'The reading mode is under development' },
+      output: { text: 'Reading mode: Doc.' },
       status: 'success',
     });
     expect(actions.setReadingMode).toHaveBeenLastCalledWith('doc');

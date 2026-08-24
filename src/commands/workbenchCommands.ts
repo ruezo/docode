@@ -240,9 +240,7 @@ export function createWorkbenchCommandRegistry(
       if (!actions.setReadingMode(mode)) {
         return unavailable('Reading mode is unavailable in the current view.');
       }
-      return success(
-        mode === 'doc' ? 'The reading mode is under development' : 'Reading mode: Code.',
-      );
+      return success(`Reading mode: ${modeLabel(mode)}.`);
     },
     help: 'mode <code|doc>',
     id: WORKBENCH_COMMAND_IDS.mode,

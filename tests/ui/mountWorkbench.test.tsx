@@ -961,7 +961,7 @@ describe('mountWorkbench', () => {
         'doc',
       );
       expect(document.querySelector('.docode-terminal')?.textContent).toContain(
-        'The reading mode is under development',
+        'Reading mode: Doc.',
       );
     });
     expect(document.querySelector('.docode-topic-code__content-slot > .cooked')).toBe(nativeRoot);

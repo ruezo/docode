@@ -173,6 +173,57 @@ describe('createTopicOverviewModels', () => {
     ]);
   });
 
+  it('models doc mode as a Markdown document with section and reply headings', () => {
+    const author: TopicPostAuthor = {
+      avatarUrl: null,
+      displayName: 'Fixture Author',
+      url: 'https://linux.do/u/fixture-author',
+      username: 'fixture-author',
+    };
+    const detail = readyDocument(42, [
+      reply(100, 1, { author }),
+      reply(101, 2, { author }),
+      { ...reply(102, 3), replyToPostNumber: 2 },
+    ]);
+
+    const models = createTopicOverviewBaseModels(detail, 'doc');
+    const lineById = (id: string) => models.minimap.lines.find((line) => line.id === id);
+
+    expect(models.minimap.lineCount).toBe(15);
+    expect(lineById('doc:title')).toMatchObject({
+      lineNumber: 1,
+      tokens: [{ text: '# Topic 42', tone: 'heading' }],
+    });
+    expect(lineById('doc:metadata')?.lineNumber).toBe(2);
+    expect(lineById('doc:metadata')?.tokens[0]?.tone).toBe('quote');
+    expect(lineById('post:100:heading')).toMatchObject({
+      lineNumber: 4,
+      tokens: [{ text: '### 楼 1 · @fixture-author', tone: 'heading' }],
+    });
+    expect(lineById('post:101:section')).toMatchObject({
+      lineNumber: 7,
+      tokens: [{ text: '## 回复', tone: 'heading' }],
+    });
+    expect(lineById('post:101:heading')?.lineNumber).toBe(9);
+    expect(lineById('post:102:heading')).toMatchObject({
+      lineNumber: 12,
+      tokens: [{ text: '### 楼 3', tone: 'heading' }],
+    });
+    expect(lineById('post:102:reply-target')).toMatchObject({
+      lineNumber: 14,
+      tokens: [{ text: '> 回复 楼 2', tone: 'quote' }],
+    });
+    expect(models.minimap.lines.some(({ id }) => id === 'topic:import')).toBe(false);
+    expect(models.minimap.points.map(({ position }) => position)).toEqual([
+      3 / 14,
+      8 / 14,
+      11 / 14,
+    ]);
+    expect(
+      createTopicOverviewBaseModels(detail).minimap.lines.some(({ id }) => id === 'topic:import'),
+    ).toBe(true);
+  });
+
   it('models a long loaded window without requiring post content DOM', () => {
     const replies = Array.from({ length: 1_000 }, (_, index) => reply(10_000 + index, 101 + index));
     const detail = readyDocument(42, replies, {

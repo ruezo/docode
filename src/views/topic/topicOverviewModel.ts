@@ -1,6 +1,14 @@
 import type { TopicPostAuthor } from '../../linuxdo/topicAdapter';
+import type { TopicReadingMode } from '../../ui/workbench/workbenchMode';
 import type { TopicDetailDocument, TopicReplyDocumentBlock } from './topicDetailDocument';
 import { createReplyMethodName } from './topicJavaSource';
+import {
+  createTopicDocLineLayout,
+  createDocReplyHeadingLabel,
+  TOPIC_DOC_HEADER_LINES,
+  TOPIC_DOC_REPLIES_SECTION_LABEL,
+  type TopicDocLineLayout,
+} from './topicDocLineLayout';
 import { createTopicLineLayout, TOPIC_HEADER_LINES, type TopicLineLayout } from './topicLineLayout';
 import { summarizeNativeContentLines } from './nativeContentPresentation';
 
@@ -118,31 +126,46 @@ export interface TopicOverviewModels {
 export function createTopicOverviewModels(
   document: TopicDetailDocument,
   positionEvidence: TopicOverviewPositionEvidence | null,
+  mode: TopicReadingMode = 'code',
 ): TopicOverviewModels {
   return positionTopicOverviewModels(
-    createTopicOverviewBaseModels(document),
+    createTopicOverviewBaseModels(document, mode),
     document,
     positionEvidence,
   );
 }
 
-export function createTopicOverviewBaseModels(document: TopicDetailDocument): TopicOverviewModels {
+export function createTopicOverviewBaseModels(
+  document: TopicDetailDocument,
+  mode: TopicReadingMode = 'code',
+): TopicOverviewModels {
   if (document.state !== 'ready') return createUnavailableModels(document);
 
   const entries = document.replies.map((reply) => createOutlineEntry(reply, null));
-  const lineLayout = createTopicLineLayout(document);
-  const lineCount = lineLayout.topicClose;
+  const anchorLines = new Map<number, number>();
+  let lineCount: number;
+  let lines: TopicMinimapLine[];
+  if (mode === 'doc') {
+    const docLineLayout = createTopicDocLineLayout(document);
+    lineCount = docLineLayout.lastLine;
+    docLineLayout.replies.forEach((layout, postId) => anchorLines.set(postId, layout.heading));
+    lines = sampleMinimapLines(createDocMinimapLines(document, docLineLayout));
+  } else {
+    const lineLayout = createTopicLineLayout(document);
+    lineCount = lineLayout.topicClose;
+    lineLayout.replies.forEach((layout, postId) => anchorLines.set(postId, layout.signature));
+    lines = sampleMinimapLines(createMinimapLines(document, lineLayout));
+  }
   const lineDivisor = Math.max(lineCount - 1, 1);
   const points = entries.map((entry) => ({
     id: entry.id,
     loadedOrder: entry.loadedOrder,
     markers: entry.markers,
     permalink: entry.permalink,
-    position: ((lineLayout.replies.get(entry.postId)?.signature ?? 1) - 1) / lineDivisor,
+    position: ((anchorLines.get(entry.postId) ?? 1) - 1) / lineDivisor,
     postId: entry.postId,
     postNumber: entry.postNumber,
   }));
-  const lines = sampleMinimapLines(createMinimapLines(document, lineLayout));
   const { loadedWindow, topic } = document;
   const hasLoadedRange =
     loadedWindow.firstPostNumber !== null && loadedWindow.lastPostNumber !== null;
@@ -325,6 +348,76 @@ function createMinimapLines(
     );
   });
   lines.push(minimapLine('topic:close', lineCount, null, 0, [token('punctuation', '}')]));
+  const divisor = Math.max(lineCount - 1, 1);
+  return lines.map((line) => ({ ...line, position: (line.lineNumber - 1) / divisor }));
+}
+
+function createDocMinimapLines(
+  document: Extract<TopicDetailDocument, { readonly state: 'ready' }>,
+  lineLayout: TopicDocLineLayout,
+): TopicMinimapLine[] {
+  const lineCount = lineLayout.lastLine;
+  const lines: Omit<TopicMinimapLine, 'position'>[] = [
+    minimapLine('doc:title', TOPIC_DOC_HEADER_LINES.title, null, 0, [
+      token('heading', `# ${document.topic.title}`),
+    ]),
+    minimapLine('doc:metadata', TOPIC_DOC_HEADER_LINES.metadata, null, 0, [
+      token(
+        'quote',
+        `> ${[
+          `#${String(document.topic.id)}`,
+          document.topic.category?.name ?? null,
+          ...document.topic.tags.map(({ name }) => `#${name}`),
+        ]
+          .filter((part): part is string => Boolean(part))
+          .join(' · ')}`,
+      ),
+    ]),
+  ];
+
+  document.replies.forEach((reply) => {
+    const layout = lineLayout.replies.get(reply.id);
+    if (!layout) return;
+    if (layout.sectionHeading !== null) {
+      lines.push(
+        minimapLine(`post:${String(reply.id)}:section`, layout.sectionHeading, reply.id, 0, [
+          token('heading', `## ${TOPIC_DOC_REPLIES_SECTION_LABEL}`),
+        ]),
+      );
+    }
+    lines.push(
+      minimapLine(`post:${String(reply.id)}:heading`, layout.heading, reply.id, 0, [
+        token(
+          'heading',
+          `### ${[
+            createDocReplyHeadingLabel(reply),
+            reply.author ? `@${reply.author.username}` : null,
+            reply.publishedLabel,
+          ]
+            .filter((part): part is string => Boolean(part))
+            .join(' · ')}`,
+        ),
+      ]),
+    );
+    summarizeNativeContentLines(reply.content).forEach((summary, index) => {
+      lines.push(
+        minimapLine(
+          `post:${String(reply.id)}:content:${String(index)}`,
+          layout.contentStart + index,
+          reply.id,
+          summary.indent,
+          [token(summary.kind === 'text' ? 'text' : summary.kind, summary.text)],
+        ),
+      );
+    });
+    if (layout.replyTarget !== null && reply.replyToPostNumber !== null) {
+      lines.push(
+        minimapLine(`post:${String(reply.id)}:reply-target`, layout.replyTarget, reply.id, 0, [
+          token('quote', `> 回复 楼 ${String(reply.replyToPostNumber)}`),
+        ]),
+      );
+    }
+  });
   const divisor = Math.max(lineCount - 1, 1);
   return lines.map((line) => ({ ...line, position: (line.lineNumber - 1) / divisor }));
 }

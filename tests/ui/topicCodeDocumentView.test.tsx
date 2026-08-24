@@ -866,7 +866,21 @@ describe('TopicCodeEditorSurface', () => {
     expect(docSurface.scrollTop).toBe(120);
     expect(view.container.querySelectorAll('.docode-topic-code__keyword')).toHaveLength(0);
     expect(view.container.querySelectorAll('.docode-topic-code__reply-close')).toHaveLength(0);
-    expect(view.container.querySelectorAll('.docode-topic-code__doc-byline')).toHaveLength(2);
+    expect(view.container.querySelectorAll('.docode-topic-code__md-heading')).toHaveLength(4);
+    expect(view.container.querySelector('.docode-topic-code__md-section')?.textContent).toBe(
+      '## 回复',
+    );
+    const docTitle = view.container.querySelector(
+      '.docode-topic-code__heading-row .docode-topic-code__md-heading',
+    );
+    expect(docTitle?.getAttribute('data-docode-editor-line')).toBe('1');
+    expect(docTitle?.textContent).toBe(`# ${detail.topic.title}`);
+    const firstDocHeading = view.container.querySelector(
+      '.docode-topic-code__reply .docode-topic-code__signature',
+    );
+    expect(firstDocHeading?.getAttribute('data-docode-editor-line')).toBe('4');
+    expect(firstDocHeading?.textContent).toMatch(/^### 楼 1 · @/u);
+    expect(view.container.querySelector('.docode-topic-code__floor')?.textContent).toBe('4');
     expect(view.container.querySelector('.docode-topic-code__content-slot > .cooked')).toBe(
       firstNativeRoot,
     );
