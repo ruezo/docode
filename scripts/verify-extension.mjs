@@ -462,6 +462,16 @@ try {
       status: 200,
     });
   });
+  await context.route('https://linux.do/uploads/fixture-favicon.png', (route) =>
+    route.fulfill({
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+      contentType: 'image/png',
+      status: 200,
+    }),
+  );
   await context.route(topicOpeningFixtureUrl, (route) =>
     route.fulfill({
       body: topicFixtureHtml(),
@@ -861,7 +871,13 @@ try {
     await windowsAutoChromePage
       .locator('.docode-workbench__window-controls button, .docode-workbench__window-controls a')
       .count(),
-    0,
+    1,
+  );
+  assert.equal(
+    await windowsAutoChromePage
+      .getByRole('button', { name: 'Enter Full Screen' })
+      .evaluate((control) => control.classList.contains('docode-workbench__window-control')),
+    true,
   );
   const m50WindowsDesktopControls = await readWindowsControlFidelity(windowsAutoChromePage);
   assert.deepEqual(m50WindowsDesktopControls, {
@@ -2037,6 +2053,18 @@ try {
     stringColor: 'rgb(206, 145, 120)',
     verticalOverflow: true,
   });
+  const tabDisguise = await topicListFixturePage.evaluate(() => ({
+    faviconPrefix:
+      document
+        .querySelector('link[rel~="icon"]')
+        ?.getAttribute('href')
+        ?.slice(0, 'data:image/png;base64,'.length) ?? null,
+    title: document.title,
+  }));
+  assert.deepEqual(tabDisguise, {
+    faviconPrefix: 'data:image/png;base64,',
+    title: 'LinuxDo.java - docode - Visual Studio Code',
+  });
   const fullWorkbenchListChrome = await readFullWorkbenchChrome(
     topicListFixturePage,
     '.docode-topic-list__line[data-row-kind="signature"]',
@@ -2334,7 +2362,7 @@ try {
     trafficLightInteractiveCount: 0,
     warningBadgeCount: 1,
     windowControlCount: 3,
-    windowControlInteractiveCount: 0,
+    windowControlInteractiveCount: 1,
   });
   const windowsControlFidelity = await readWindowsControlFidelity(windowsChromePage);
   assert.deepEqual(windowsControlFidelity, {
@@ -2363,6 +2391,7 @@ try {
     path: path.join(platformChromeEvidenceDir, 'workbench-windows-close-hover.png'),
   });
   await windowsChromePage.mouse.move(0, 200);
+  await verifyWindowsWorkbenchFullscreen(windowsChromePage);
   await windowsChromePage.setViewportSize({ width: 420, height: 640 });
   const windowsNarrowPlatformChrome = await readPlatformChrome(windowsChromePage);
   assert.deepEqual(windowsNarrowPlatformChrome, {
@@ -2395,7 +2424,7 @@ try {
     trafficLightInteractiveCount: 0,
     warningBadgeCount: 1,
     windowControlCount: 3,
-    windowControlInteractiveCount: 0,
+    windowControlInteractiveCount: 1,
   });
   const windowsNarrowControlFidelity = await readWindowsControlFidelity(windowsChromePage);
   assert.deepEqual(windowsNarrowControlFidelity, windowsControlFidelity);
@@ -2607,6 +2636,34 @@ try {
   await topicListFixturePage.goBack({ waitUntil: 'domcontentloaded' });
   assert.equal(topicListFixturePage.url(), topicListFixtureUrl);
   await topicListFixturePage.getByRole('list', { name: 'Topic list document' }).waitFor();
+
+  await topicListScroll.evaluate((element) => {
+    element.scrollTop = 180;
+    element.dispatchEvent(new Event('scroll'));
+  });
+  await topicListFixturePage.waitForFunction(
+    () =>
+      document.querySelector('.docode-topic-list__gutter-content')?.style.transform ===
+      'translate3d(0px, -180px, 0px)',
+  );
+  await firstTopicLink.click({ modifiers: [topicListPrimaryModifier] });
+  await topicListFixturePage.waitForURL(topicOpeningFixtureUrl);
+  await assertRuntimeOwnership(topicListFixturePage, true);
+  await topicListFixturePage.goBack({ waitUntil: 'domcontentloaded' });
+  assert.equal(topicListFixturePage.url(), topicListFixtureUrl);
+  await topicListFixturePage.getByRole('list', { name: 'Topic list document' }).waitFor();
+  await topicListFixturePage.waitForFunction(
+    () => document.querySelector('.docode-topic-list__scroll')?.scrollTop === 180,
+  );
+  assert.equal(
+    await topicListFixturePage
+      .locator('.docode-topic-list__gutter-content')
+      .evaluate((gutter) => gutter.style.transform),
+    'translate3d(0px, -180px, 0px)',
+  );
+  await topicListFixturePage.screenshot({
+    path: path.join(evidenceDir, 'topic-list-viewport-restored.png'),
+  });
 
   await topicListScroll.evaluate((element) => {
     element.scrollTop = 240;
@@ -4760,7 +4817,7 @@ try {
     bracketBackground: 'rgba(0, 0, 0, 0)',
     commentColor: 'rgb(106, 153, 85)',
     foldExpanded: 'true',
-    keywordColor: 'rgb(197, 134, 192)',
+    keywordColor: 'rgb(86, 156, 214)',
     metadataText: '//#2·Fixture User·November 14, 2023·@unread',
     readState: 'unread',
     replyBackground: 'rgba(0, 0, 0, 0)',
@@ -4958,7 +5015,7 @@ try {
     quoteTitleHeight: 20,
     topicCloseBackground: 'rgba(0, 0, 0, 0)',
     topicCloseBorderRadius: '0px',
-    topicCloseLineNumber: '33',
+    topicCloseLineNumber: '37',
   });
   await topicFixturePage
     .locator('.docode-topic-code__content-slot aside.quote')
@@ -6123,9 +6180,7 @@ try {
   assert.equal(await terminalInput.inputValue(), 'mode ');
   await terminalInput.pressSequentially('doc');
   await terminalInput.press('Enter');
-  await topicFixturePage
-    .getByText('The reading mode is under development', { exact: true })
-    .waitFor();
+  await topicFixturePage.getByText('Reading mode: Doc.', { exact: true }).waitFor();
   await topicFixturePage.getByRole('document', { name: 'Topic document' }).waitFor();
   await topicFixturePage.screenshot({ path: path.join(evidenceDir, 'terminal-command-mode.png') });
   await runTerminalCommand(topicFixturePage, 'mode code', 'Reading mode: Code.');
@@ -6510,16 +6565,18 @@ try {
   await topicFixturePage.getByRole('document', { name: 'Topic document' }).waitFor();
   const topicDocDocument = await readTopicDocDocument(topicFixturePage);
   assert.deepEqual(topicDocDocument, {
-    bylineCount: 2,
-    contentFontSize: '15px',
-    contentLineHeight: '24px',
+    contentFontSize: '13px',
+    contentLineHeight: '20px',
     floorCount: 2,
+    headingColor: 'rgb(86, 156, 214)',
+    headingCount: 4,
     indentBorderWidth: '0px',
     keywordCount: 0,
     modeToolbarCount: 0,
     nativeRootCount: 2,
     replyCloseCount: 0,
-    titleFontSize: '20px',
+    sectionText: '## 回复',
+    titleText: '# Synthetic topic',
   });
   await topicFixturePage.screenshot({ path: path.join(evidenceDir, 'topic-doc-desktop.png') });
   await topicFixturePage.screenshot({
@@ -6739,9 +6796,7 @@ try {
   await narrowTerminalTab.click();
   await narrowTerminalInput.fill('mode doc');
   await narrowTerminalInput.press('Enter');
-  await narrowShellPage
-    .getByText('The reading mode is under development', { exact: true })
-    .waitFor();
+  await narrowShellPage.getByText('Reading mode: Doc.', { exact: true }).waitFor();
   await narrowShellPage.getByRole('tab', { name: 'Outline', exact: true }).click();
   await narrowShellPage.getByRole('document', { name: 'Topic document' }).waitFor();
   assert.equal(await narrowShellPage.locator('.docode-topic-code__keyword').count(), 0);
@@ -8657,6 +8712,28 @@ async function verifyMacWorkbenchFullscreen(page) {
   );
 }
 
+async function verifyWindowsWorkbenchFullscreen(page) {
+  const enterButton = page.getByRole('button', { name: 'Enter Full Screen' });
+  await enterButton.waitFor();
+  assert.equal(await enterButton.isEnabled(), true);
+  assert.equal(await enterButton.getAttribute('aria-pressed'), 'false');
+  assert.equal(await enterButton.locator('.codicon-chrome-maximize').count(), 1);
+  await enterButton.click();
+  const exitButton = page.getByRole('button', { name: 'Exit Full Screen' });
+  await exitButton.waitFor();
+  assert.equal(await exitButton.getAttribute('aria-pressed'), 'true');
+  assert.equal(await exitButton.locator('.codicon-chrome-restore').count(), 1);
+  assert.equal(await exitButton.locator('.codicon-chrome-maximize').count(), 0);
+  assert.equal(await page.evaluate(() => document.fullscreenElement), null);
+  await page.locator('.docode-workbench__window-controls').screenshot({
+    path: path.join(workbenchFullscreenEvidenceDir, 'workbench-fullscreen-control-windows.png'),
+  });
+  await exitButton.click();
+  const restoredEnterButton = page.getByRole('button', { name: 'Enter Full Screen' });
+  await restoredEnterButton.waitFor();
+  assert.equal(await restoredEnterButton.getAttribute('aria-pressed'), 'false');
+}
+
 async function readMacTrafficLightGlyphs(page) {
   return page.locator('.docode-workbench__traffic-lights').evaluate((lights) => {
     const glyphs = Array.from(lights.querySelectorAll('.docode-workbench__traffic-light-glyph'));
@@ -8955,8 +9032,7 @@ async function readTitlebarFidelity(page) {
       !(right instanceof HTMLElement) ||
       !(commandCenter instanceof HTMLButtonElement) ||
       !(back instanceof HTMLButtonElement) ||
-      !(forward instanceof HTMLButtonElement) ||
-      !(trafficLights instanceof HTMLElement)
+      !(forward instanceof HTMLButtonElement)
     ) {
       throw new Error('Missing rendered title-bar fidelity surface.');
     }
@@ -8976,7 +9052,7 @@ async function readTitlebarFidelity(page) {
       rightFlexGrow: getComputedStyle(right).flexGrow,
       titlebarBackground: getComputedStyle(titlebar).backgroundColor,
       titlebarDisplay: getComputedStyle(titlebar).display,
-      trafficLightsInLeft: left.contains(trafficLights),
+      trafficLightsInLeft: trafficLights instanceof HTMLElement && left.contains(trafficLights),
     };
   });
 }
@@ -9616,28 +9692,34 @@ async function readTopicReplySourceFidelity(page) {
 async function readTopicDocDocument(page) {
   return page.locator('[data-docode-workbench-root]').evaluate((root) => {
     const surface = root.querySelector('.docode-topic-code__surface[data-mode="doc"]');
-    const title = root.querySelector('.docode-topic-code__doc-title');
+    const title = root.querySelector(
+      '.docode-topic-code__heading-row .docode-topic-code__md-heading',
+    );
+    const section = root.querySelector('.docode-topic-code__md-section');
     const content = root.querySelector('.docode-topic-code__content-slot > .cooked');
     const indent = root.querySelector('.docode-topic-code__content-indent');
     if (
       !(surface instanceof HTMLElement) ||
       !(title instanceof HTMLElement) ||
+      !(section instanceof HTMLElement) ||
       !(content instanceof HTMLElement) ||
       !(indent instanceof HTMLElement)
     ) {
       throw new Error('Missing rendered topic Doc document elements.');
     }
     return {
-      bylineCount: root.querySelectorAll('.docode-topic-code__doc-byline').length,
       contentFontSize: getComputedStyle(content).fontSize,
       contentLineHeight: getComputedStyle(content).lineHeight,
       floorCount: root.querySelectorAll('.docode-topic-code__floor').length,
+      headingColor: getComputedStyle(title).color,
+      headingCount: root.querySelectorAll('.docode-topic-code__md-heading').length,
       indentBorderWidth: getComputedStyle(indent).borderLeftWidth,
       keywordCount: root.querySelectorAll('.docode-topic-code__keyword').length,
       modeToolbarCount: root.querySelectorAll('.docode-topic-code__mode-toolbar').length,
       nativeRootCount: root.querySelectorAll('.docode-topic-code__content-slot > .cooked').length,
       replyCloseCount: root.querySelectorAll('.docode-topic-code__reply-close').length,
-      titleFontSize: getComputedStyle(title).fontSize,
+      sectionText: section.textContent,
+      titleText: title.textContent,
     };
   });
 }
@@ -10039,7 +10121,7 @@ async function readContentStatus(page, tabId = null) {
 function topicListFixtureHtml({ firstUnreadPostNumber = null } = {}) {
   return `<!doctype html>
 <html>
-  <head><title>Synthetic topic-list fixture</title></head>
+  <head><title>Synthetic topic-list fixture</title><link rel="icon" href="/uploads/fixture-favicon.png"></head>
   <body>
     <main>
       <table class="topic-list">
@@ -10173,6 +10255,7 @@ function topicFixtureHtml() {
 <html>
   <head>
     <title>Synthetic topic fixture</title>
+    <link rel="icon" href="/uploads/fixture-favicon.png">
     <style>
       code { color: #d0d0d0; background: #ffffff; border-radius: 6px; }
       .cooked aside.quote > .title { min-height: 68px; color: #666666; background: #ffffff; }
