@@ -35,6 +35,7 @@ describe('platform workbench chrome', () => {
     const { container } = renderTitleBar('mac');
 
     expect(container.querySelectorAll('.docode-workbench__traffic-light')).toHaveLength(3);
+    expect(container.querySelectorAll('.docode-workbench__window-control')).toHaveLength(0);
     expect(
       Array.from(container.querySelectorAll('.docode-workbench__traffic-light-glyph'), (glyph) =>
         glyph.getAttribute('data-glyph'),
@@ -190,7 +191,7 @@ describe('platform workbench chrome', () => {
     expect(onOpenQuickOpen).toHaveBeenCalledOnce();
   });
 
-  it('renders the default Windows menu and visual host-window controls without fake buttons', () => {
+  it('renders the default Windows menu and keeps minimize and close as visual controls', () => {
     const { container } = renderTitleBar('windows');
 
     expect(
@@ -204,7 +205,46 @@ describe('platform workbench chrome', () => {
       'codicon-chrome-maximize',
       'codicon-chrome-close',
     ]);
-    expect(screen.queryByRole('button', { name: /minimize|maximize|close window/iu })).toBeNull();
+    expect(controls[0]?.tagName).toBe('SPAN');
+    expect(controls[1]?.tagName).toBe('BUTTON');
+    expect(controls[2]?.tagName).toBe('SPAN');
+    expect(screen.queryByRole('button', { name: /minimize|close window/iu })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Full Screen unavailable' }).hasAttribute('disabled'),
+    ).toBe(true);
+  });
+
+  it('toggles browser-window full screen from the Windows maximize control', async () => {
+    let active = false;
+    const setActive = vi.fn<WindowFullscreenClient['setActive']>((nextActive) => {
+      active = nextActive;
+      return Promise.resolve({ active, supported: true });
+    });
+    const client: WindowFullscreenClient = {
+      getState: vi.fn(() => Promise.resolve({ active, supported: true })),
+      setActive,
+    };
+    const { container } = renderTitleBar('windows', { windowFullscreenClient: client });
+
+    const enter = await screen.findByRole('button', { name: 'Enter Full Screen' });
+    expect(enter.classList.contains('docode-workbench__window-control')).toBe(true);
+    expect(enter.querySelector('.codicon-chrome-maximize')).not.toBeNull();
+    fireEvent.click(enter);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Exit Full Screen' })).toBeDefined();
+    });
+    expect(setActive).toHaveBeenCalledWith(true);
+    const exit = screen.getByRole('button', { name: 'Exit Full Screen' });
+    expect(exit.getAttribute('aria-pressed')).toBe('true');
+    expect(exit.querySelector('.codicon-chrome-restore')).not.toBeNull();
+    expect(exit.querySelector('.codicon-chrome-maximize')).toBeNull();
+
+    fireEvent.click(exit);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Enter Full Screen' })).toBeDefined();
+    });
+    expect(setActive).toHaveBeenCalledWith(false);
+    expect(container.querySelectorAll('.codicon-chrome-maximize')).toHaveLength(1);
   });
 
   it('selects Windows chrome from the real navigator fingerprint by default', () => {
@@ -215,7 +255,7 @@ describe('platform workbench chrome', () => {
       container.querySelector('.docode-workbench__titlebar')?.getAttribute('data-platform'),
     ).toBe('windows');
     expect(container.querySelectorAll('.docode-workbench__window-control')).toHaveLength(3);
-    expect(container.querySelectorAll('.docode-workbench__traffic-light')).toHaveLength(3);
+    expect(container.querySelectorAll('.docode-workbench__traffic-light')).toHaveLength(0);
   });
 
   it('renders the VS Code layout-control order and keeps every exposed action honest', () => {

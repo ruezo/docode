@@ -9,6 +9,7 @@ export type CodiconName =
   | 'chrome-close'
   | 'chrome-maximize'
   | 'chrome-minimize'
+  | 'chrome-restore'
   | 'chevron-down'
   | 'chevron-right'
   | 'circle-slash'

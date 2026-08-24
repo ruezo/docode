@@ -105,7 +105,7 @@ export function WorkbenchTitleBar({
     >
       <div className="docode-workbench__titlebar-left">
         <ProductMark />
-        <MacTrafficLights client={windowFullscreenClient} />
+        {platform === 'mac' ? <MacTrafficLights client={windowFullscreenClient} /> : null}
         <WindowsMenuBar />
       </div>
       <div className="docode-workbench__titlebar-center">
@@ -195,7 +195,7 @@ export function WorkbenchTitleBar({
             <Codicon name="layout-sidebar-right-off" />
           </button>
         </div>
-        <WindowsWindowControls />
+        {platform === 'windows' ? <WindowsWindowControls client={windowFullscreenClient} /> : null}
       </div>
       {layoutMenuPosition ? (
         <LayoutMenu
@@ -343,22 +343,40 @@ function ProductMark() {
   );
 }
 
-interface MacTrafficLightsProps {
+interface WindowControlsProps {
   readonly client: WindowFullscreenClient;
 }
 
 type FullscreenMode = 'document' | 'unsupported' | 'window';
 
-function MacTrafficLights({ client }: MacTrafficLightsProps) {
-  const lightsRef = useRef<HTMLSpanElement | null>(null);
+interface WorkbenchFullscreenControl {
+  readonly active: boolean;
+  readonly error: string | null;
+  readonly hostRef: RefObject<HTMLSpanElement | null>;
+  readonly supported: boolean;
+  readonly toggle: () => void;
+}
+
+function fullscreenControlLabel(supported: boolean, active: boolean): string {
+  if (!supported) return 'Full Screen unavailable';
+  return active ? 'Exit Full Screen' : 'Enter Full Screen';
+}
+
+function fullscreenControlTooltip(supported: boolean, active: boolean): string {
+  if (!supported) return 'Full Screen is unavailable in this browser';
+  return active ? 'Exit Full Screen' : 'Enter Full Screen';
+}
+
+function useWorkbenchFullscreen(client: WindowFullscreenClient): WorkbenchFullscreenControl {
+  const hostRef = useRef<HTMLSpanElement | null>(null);
   const mountedRef = useRef(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
   const [fullscreenError, setFullscreenError] = useState<string | null>(null);
   const [fullscreenMode, setFullscreenMode] = useState<FullscreenMode>('unsupported');
 
   useEffect(() => {
-    const lights = lightsRef.current;
-    const owner = lights?.closest<HTMLElement>('[data-docode-workbench-root]') ?? null;
+    const host = hostRef.current;
+    const owner = host?.closest<HTMLElement>('[data-docode-workbench-root]') ?? null;
     const ownerDocument = owner?.ownerDocument;
     const fullscreenTarget = ownerDocument?.documentElement;
     mountedRef.current = true;
@@ -413,8 +431,8 @@ function MacTrafficLights({ client }: MacTrafficLightsProps) {
   }, [client]);
 
   const toggleFullscreen = () => {
-    const lights = lightsRef.current;
-    const owner = lights?.closest<HTMLElement>('[data-docode-workbench-root]') ?? null;
+    const host = hostRef.current;
+    const owner = host?.closest<HTMLElement>('[data-docode-workbench-root]') ?? null;
     const ownerDocument = owner?.ownerDocument;
     const fullscreenTarget = ownerDocument?.documentElement;
     if (!owner || !ownerDocument || !fullscreenTarget || fullscreenMode === 'unsupported') return;
@@ -450,10 +468,20 @@ function MacTrafficLights({ client }: MacTrafficLightsProps) {
     });
   };
 
-  const fullscreenSupported = fullscreenMode !== 'unsupported';
+  return {
+    active: fullscreenActive,
+    error: fullscreenError,
+    hostRef,
+    supported: fullscreenMode !== 'unsupported',
+    toggle: toggleFullscreen,
+  };
+}
+
+function MacTrafficLights({ client }: WindowControlsProps) {
+  const { active, error, hostRef, supported, toggle } = useWorkbenchFullscreen(client);
 
   return (
-    <span className="docode-workbench__traffic-lights" ref={lightsRef}>
+    <span className="docode-workbench__traffic-lights" ref={hostRef}>
       <span aria-hidden="true" className="docode-workbench__traffic-light" data-tone="close">
         <span className="docode-workbench__traffic-light-glyph" data-glyph="close" />
       </span>
@@ -461,26 +489,14 @@ function MacTrafficLights({ client }: MacTrafficLightsProps) {
         <span className="docode-workbench__traffic-light-glyph" data-glyph="minimize" />
       </span>
       <button
-        aria-label={
-          fullscreenSupported
-            ? fullscreenActive
-              ? 'Exit Full Screen'
-              : 'Enter Full Screen'
-            : 'Full Screen unavailable'
-        }
-        aria-pressed={fullscreenActive}
+        aria-label={fullscreenControlLabel(supported, active)}
+        aria-pressed={active}
         className="docode-workbench__traffic-light"
-        data-docode-tooltip={
-          fullscreenSupported
-            ? fullscreenActive
-              ? 'Exit Full Screen'
-              : 'Enter Full Screen'
-            : 'Full Screen is unavailable in this browser'
-        }
-        data-fullscreen-active={fullscreenActive}
+        data-docode-tooltip={fullscreenControlTooltip(supported, active)}
+        data-fullscreen-active={active}
         data-tone="maximize"
-        disabled={!fullscreenSupported}
-        onClick={toggleFullscreen}
+        disabled={!supported}
+        onClick={toggle}
         type="button"
       >
         <span
@@ -489,9 +505,9 @@ function MacTrafficLights({ client }: MacTrafficLightsProps) {
           data-glyph="zoom"
         />
       </button>
-      {fullscreenError ? (
+      {error ? (
         <span aria-live="polite" className="docode-sr-only" role="status">
-          {fullscreenError}
+          {error}
         </span>
       ) : null}
     </span>
@@ -511,18 +527,37 @@ function WindowsMenuBar() {
   );
 }
 
-function WindowsWindowControls() {
+function WindowsWindowControls({ client }: WindowControlsProps) {
+  const { active, error, hostRef, supported, toggle } = useWorkbenchFullscreen(client);
+
   return (
-    <span aria-hidden="true" className="docode-workbench__window-controls">
-      <span className="docode-workbench__window-control">
+    <span className="docode-workbench__window-controls" ref={hostRef}>
+      <span aria-hidden="true" className="docode-workbench__window-control">
         <Codicon name="chrome-minimize" />
       </span>
-      <span className="docode-workbench__window-control">
-        <Codicon name="chrome-maximize" />
-      </span>
-      <span className="docode-workbench__window-control docode-workbench__window-control--close">
+      <button
+        aria-label={fullscreenControlLabel(supported, active)}
+        aria-pressed={active}
+        className="docode-workbench__window-control"
+        data-docode-tooltip={fullscreenControlTooltip(supported, active)}
+        data-fullscreen-active={active}
+        disabled={!supported}
+        onClick={toggle}
+        type="button"
+      >
+        <Codicon name={active ? 'chrome-restore' : 'chrome-maximize'} />
+      </button>
+      <span
+        aria-hidden="true"
+        className="docode-workbench__window-control docode-workbench__window-control--close"
+      >
         <Codicon name="chrome-close" />
       </span>
+      {error ? (
+        <span aria-live="polite" className="docode-sr-only" role="status">
+          {error}
+        </span>
+      ) : null}
     </span>
   );
 }

@@ -112,6 +112,10 @@
   content: '\eaba';
 }
 
+.docode-theme-dark-modern .codicon-chrome-restore::before {
+  content: '\eabb';
+}
+
 .docode-theme-dark-modern .codicon-chevron-down::before {
   content: '\eab4';
 }

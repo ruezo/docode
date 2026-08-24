@@ -845,20 +845,43 @@ html[data-docode-presentation] .emoji-picker-modal {
   --docode-icon-size: 16px;
 
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 46px;
-  height: 35px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   color: var(--docode-color-foreground);
+  background: transparent;
 }
 
 [data-docode-workbench-root] .docode-workbench__window-control:hover {
-  background: var(--docode-color-toolbar-hover-background);
+  background: var(--docode-color-window-control-hover-background);
 }
 
 [data-docode-workbench-root] .docode-workbench__window-control--close:hover {
   color: #ffffff;
   background: rgb(232 17 35 / 90%);
+}
+
+[data-docode-workbench-root] button.docode-workbench__window-control {
+  cursor: default;
+  appearance: none;
+}
+
+[data-docode-workbench-root] button.docode-workbench__window-control:focus-visible {
+  outline: 1px solid var(--docode-color-focus-border);
+  outline-offset: -1px;
+}
+
+[data-docode-workbench-root] button.docode-workbench__window-control:disabled {
+  color: var(--docode-color-disabled-foreground);
+}
+
+[data-docode-workbench-root] button.docode-workbench__window-control:disabled:hover {
+  background: transparent;
 }
 
 [data-docode-workbench-root] button.docode-workbench__titlebar-action {
