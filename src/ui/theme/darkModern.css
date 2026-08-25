@@ -102,6 +102,13 @@
   --docode-color-text-separator: #21262d;
   --docode-color-error-foreground: #f85149;
   --docode-color-warning-foreground: #cca700;
+  --docode-color-notifications-background: #1f1f1f;
+  --docode-color-notifications-border: #2b2b2b;
+  --docode-color-notifications-foreground: #cccccc;
+  --docode-color-notifications-shadow: #0000005c;
+  --docode-color-notification-error-icon: #f14c4c;
+  --docode-color-notification-info-icon: #3794ff;
+  --docode-color-notification-warning-icon: #cca700;
   --docode-color-progress-bar-background: #0078d4;
   --docode-color-token-category: #4ec9b0;
   --docode-color-token-count: #b5cea8;

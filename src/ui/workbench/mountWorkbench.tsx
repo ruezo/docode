@@ -14,9 +14,13 @@ import {
 } from '../../linuxdo/postActionAdapter';
 import { LinuxDoSearchAdapter } from '../../linuxdo/searchAdapter';
 import { LinuxDoExplorerTopicLoader } from '../../linuxdo/explorerTopicLoader';
+import { LinuxDoNotificationsLoader } from '../../linuxdo/notificationsLoader';
 import { LinuxDoTopicListPaginator } from '../../linuxdo/topicListPaginator';
 import { LinuxDoTopicPaginator } from '../../linuxdo/topicPaginator';
-import { detectLinuxDoCurrentUser } from '../../linuxdo/capabilities';
+import {
+  detectLinuxDoCurrentUser,
+  detectLinuxDoUnreadNotifications,
+} from '../../linuxdo/capabilities';
 import type { WorkbenchAppearancePreference } from '../../settings/workbenchAppearancePreference';
 import { extractTopic, type TopicExtraction } from '../../linuxdo/topicAdapter';
 import { WorkbenchNavigationCoordinator } from '../../navigation/navigationCoordinator';
@@ -96,8 +100,10 @@ export function mountWorkbench(
   const commandNavigation = new LinuxDoNavigationAdapter(document, element, initialRoute);
   const composer = new LinuxDoComposerAdapter(document, initialRoute);
   const postActions = new LinuxDoPostActionAdapter(document, initialRoute);
+  const likeStateOverrides = new Map<number, boolean>();
   const search = new LinuxDoSearchAdapter(document);
   const explorerTopics = new LinuxDoExplorerTopicLoader(document);
+  const notificationsLoader = new LinuxDoNotificationsLoader(document);
   const topicListPaginator = new LinuxDoTopicListPaginator(document);
   const nativeContentTransfer = new NativeContentTransfer(document);
   const resolveNativeContent = (sourceOwner: HTMLElement): HTMLElement | null =>
@@ -148,6 +154,9 @@ export function mountWorkbench(
   };
   const runPostAction = async (request: LinuxDoPostActionRequest) => {
     const outcome = await postActions.execute(request);
+    if (request.action === 'like' && outcome.kind === 'confirmed') {
+      likeStateOverrides.set(request.postId, outcome.active);
+    }
     renderCurrent();
     return outcome;
   };
@@ -244,6 +253,7 @@ export function mountWorkbench(
     const view = createWorkbenchViewSnapshot(document, current.route, {
       deferTopicCompatibilityError: isRouteSettling(current.route, current.generation),
       deferTopicListCompatibilityError: isRouteSettling(current.route, current.generation),
+      likeStateOverrides,
       resolveNativeContent,
     });
     if (
@@ -253,6 +263,7 @@ export function mountWorkbench(
       cancelRouteSettle();
     }
     viewRevision += 1;
+    document.documentElement.setAttribute('data-docode-render-revision', String(viewRevision));
     const nextWorkbench = (
       <WorkbenchShell
         actions={{
@@ -273,6 +284,7 @@ export function mountWorkbench(
         onAppearanceChange={actions.onAppearanceChange}
         onCopyText={copyText}
         onLoadExplorerTopics={loadExplorerTopics}
+        onLoadNotifications={(signal) => notificationsLoader.load(signal)}
         onLoadTopicList={loadTopicList}
         onLoadMoreTopics={(route, loadedTopicIds, signal) =>
           topicListPaginator.loadNext(route, loadedTopicIds, signal)
@@ -309,6 +321,7 @@ export function mountWorkbench(
         topicDetailDocument={view.topicDetailDocument}
         topicListDocument={view.topicListDocument}
         terminalUsername={currentUser.username}
+        unreadNotifications={detectLinuxDoUnreadNotifications(document)}
         viewRevision={viewRevision}
       />
     );
@@ -388,6 +401,7 @@ export function mountWorkbench(
         replyTargetController = null;
         replyTargetTopicId = null;
         topicPaginator.reset();
+        likeStateOverrides.clear();
       }
       commandNavigation.observe(route, generation);
       composer.observe(route, generation);

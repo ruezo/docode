@@ -302,6 +302,93 @@ describe('platform workbench chrome', () => {
     expect(screen.queryByRole('menu', { name: 'Customize Layout' })).toBeNull();
   });
 
+  it('shows the Linux DO unread count as a VS Code-style account badge', () => {
+    const activityBarProps = {
+      onOpenExplorer: vi.fn(),
+      onOpenQuickOpen: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onRestoreOriginal: vi.fn(),
+      settingsOpen: false,
+      sidebarOpen: true,
+    };
+    const { rerender } = render(<WorkbenchActivityBar {...activityBarProps} />);
+    expect(
+      screen
+        .getByRole('link', { name: 'Linux DO account' })
+        .querySelector('.docode-workbench__activity-badge[data-tone="count"]'),
+    ).toBeNull();
+
+    rerender(<WorkbenchActivityBar {...activityBarProps} unreadNotifications={3} />);
+    const account = screen.getByRole('link', { name: 'Linux DO account, 3 unread notifications' });
+    expect(
+      account.querySelector('.docode-workbench__activity-badge[data-tone="count"]')?.textContent,
+    ).toBe('3');
+
+    rerender(<WorkbenchActivityBar {...activityBarProps} unreadNotifications={120} />);
+    expect(
+      screen
+        .getByRole('link', { name: 'Linux DO account, 120 unread notifications' })
+        .querySelector('.docode-workbench__activity-badge[data-tone="count"]')?.textContent,
+    ).toBe('99+');
+  });
+
+  it('opens the account menu with notifications and a fixed preferences entry', async () => {
+    const onLoadNotifications = vi.fn().mockResolvedValue({
+      kind: 'ready',
+      notifications: [
+        {
+          id: 11,
+          kind: 'replied',
+          label: 'DOCode feedback',
+          read: false,
+          url: 'https://linux.do/t/docode-feedback/42/5',
+          username: 'alice',
+        },
+        {
+          id: 12,
+          kind: 'liked',
+          label: 'Older topic',
+          read: true,
+          url: 'https://linux.do/t/older-topic/41',
+          username: null,
+        },
+      ],
+    });
+    render(
+      <WorkbenchActivityBar
+        onLoadNotifications={onLoadNotifications}
+        onOpenExplorer={vi.fn()}
+        onOpenQuickOpen={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onRestoreOriginal={vi.fn()}
+        settingsOpen={false}
+        sidebarOpen
+        unreadNotifications={1}
+      />,
+    );
+
+    const account = screen.getByRole('button', {
+      name: 'Linux DO account, 1 unread notification',
+    });
+    expect(account.getAttribute('aria-haspopup')).toBe('menu');
+    fireEvent.click(account);
+
+    const menu = await screen.findByRole('menu', { name: 'Linux DO notifications' });
+    const first = await screen.findByRole('menuitem', { name: '@alice · DOCode feedback' });
+    expect(first.getAttribute('href')).toBe('https://linux.do/t/docode-feedback/42/5');
+    expect(first.getAttribute('data-read')).toBe('false');
+    expect(screen.getByRole('menuitem', { name: 'Older topic' }).getAttribute('data-read')).toBe(
+      'true',
+    );
+    const items = screen.getAllByRole('menuitem');
+    expect(items.at(-1)?.textContent).toBe('Preferences');
+    expect(items.at(-1)?.getAttribute('href')).toBe('https://linux.do/my/activity');
+    expect(onLoadNotifications).toHaveBeenCalledOnce();
+
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(screen.queryByRole('menu', { name: 'Linux DO notifications' })).toBeNull();
+  });
+
   it('renders the requested Activity Bar stack without blank or unrelated entries', () => {
     const { container } = render(
       <WorkbenchActivityBar

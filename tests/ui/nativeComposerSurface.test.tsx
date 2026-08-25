@@ -69,6 +69,36 @@ describe('NativeComposerSurface', () => {
     transfer.dispose();
   });
 
+  it('collapses formatting tools behind a toggle that expands the native toolbar', async () => {
+    const user = userEvent.setup();
+    document.body.innerHTML = fixture();
+    const transfer = new NativeContentTransfer(document);
+
+    render(
+      <div className="docode-theme-dark-modern" data-docode-workbench-root="owner">
+        <NativeComposerSurface
+          capability={detectComposer()}
+          feedback={null}
+          nativeContentTransfer={transfer}
+          revision={0}
+        />
+      </div>,
+    );
+
+    const toggle = screen.getByRole('button', { name: 'Formatting tools' });
+    const surface = screen.getByRole('region', { name: 'Linux DO reply composer' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(surface.getAttribute('data-toolbar')).toBe('collapsed');
+
+    await user.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(surface.getAttribute('data-toolbar')).toBe('expanded');
+
+    await user.click(toggle);
+    expect(surface.getAttribute('data-toolbar')).toBe('collapsed');
+    transfer.dispose();
+  });
+
   it('preserves the native minimized draft state instead of inventing local content', () => {
     document.body.innerHTML = fixture('draft');
     const nativeRoot = document.querySelector<HTMLElement>('#reply-control');

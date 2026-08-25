@@ -9,6 +9,7 @@ import {
   browserWindowFullscreenClient,
   type WindowFullscreenClient,
 } from '../../platform/browserWindowFullscreen';
+import { VSCODE_FAVICON_DATA_URI } from '../../runtime/tabDisguise';
 import type { WorkbenchViewContext } from './workbenchContext';
 
 interface WorkbenchTitleBarProps {
@@ -338,7 +339,7 @@ function moveLayoutMenuFocus(event: KeyboardEvent<HTMLDivElement>) {
 function ProductMark() {
   return (
     <span aria-hidden="true" className="docode-workbench__product-mark" title="DOCode">
-      <Codicon name="remote" />
+      <img alt="" className="docode-workbench__product-mark-icon" src={VSCODE_FAVICON_DATA_URI} />
     </span>
   );
 }

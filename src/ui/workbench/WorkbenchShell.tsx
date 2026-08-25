@@ -34,7 +34,9 @@ import type {
   LinuxDoComposerSubmitRequest,
 } from '../../linuxdo/composerAdapter';
 import type { LinuxDoSimpleTopicListView } from '../../linuxdo/explorerTopicLoader';
-import type { ComposerCapability } from '../../linuxdo/capabilities';
+import type { NotificationsLoadOutcome } from '../../linuxdo/notificationsLoader';
+import { detectLinuxDoCapabilities, type ComposerCapability } from '../../linuxdo/capabilities';
+import { DOCODE_BUILD_TAG } from '../../runtime/buildTag';
 import type {
   LinuxDoPostActionOutcome,
   LinuxDoPostActionRequest,
@@ -62,6 +64,11 @@ import { NativeComposerSurface } from './NativeComposerSurface';
 import { WorkbenchStateSurface, type WorkbenchStateActions } from './WorkbenchStateSurface';
 import { WorkbenchActivityBar } from './WorkbenchActivityBar';
 import { WorkbenchBreadcrumbs } from './WorkbenchBreadcrumbs';
+import {
+  WorkbenchNotificationToasts,
+  type WorkbenchNotificationItem,
+  type WorkbenchNotificationSeverity,
+} from './WorkbenchNotifications';
 import { WorkbenchExplorer } from './WorkbenchExplorer';
 import { WorkbenchTitleBar } from './WorkbenchTitleBar';
 import type { WorkbenchViewContext } from './workbenchContext';
@@ -124,6 +131,8 @@ import {
   type WorkbenchMode,
   type WorkbenchPresentationMode,
 } from './workbenchMode';
+
+let toastIdSequence = 0;
 
 const PANEL_MINIMUM_HEIGHT = 77;
 const EDITOR_MINIMUM_HEIGHT = 120;
@@ -261,7 +270,10 @@ interface WorkbenchShellProps {
   readonly surfaceState: WorkbenchSurfaceState;
   readonly topicDetailDocument: TopicDetailDocument | null;
   readonly topicListDocument: TopicListDocument | null;
+  readonly onLoadNotifications?:
+    ((signal: AbortSignal) => Promise<NotificationsLoadOutcome>) | undefined;
   readonly terminalUsername: string | null;
+  readonly unreadNotifications?: number;
   readonly viewRevision: number;
 }
 
@@ -293,7 +305,9 @@ export function WorkbenchShell({
   surfaceState,
   topicDetailDocument,
   topicListDocument,
+  onLoadNotifications,
   terminalUsername,
+  unreadNotifications = 0,
   viewRevision,
 }: WorkbenchShellProps) {
   const [appearance, setAppearance] = useState(initialAppearance);
@@ -320,6 +334,20 @@ export function WorkbenchShell({
   const [terminalFocusRequest, setTerminalFocusRequest] = useState(0);
   const [terminalClearRequest, setTerminalClearRequest] = useState(0);
   const [terminalSession, setTerminalSession] = useState(0);
+  const [toastNotifications, setToastNotifications] = useState<
+    readonly WorkbenchNotificationItem[]
+  >([]);
+  const pushToastNotification = useCallback(
+    (severity: WorkbenchNotificationSeverity, message: string, source = 'DOCode') => {
+      toastIdSequence += 1;
+      const id = toastIdSequence;
+      setToastNotifications((current) => [...current.slice(-2), { id, message, severity, source }]);
+    },
+    [],
+  );
+  const dismissToastNotification = useCallback((id: number) => {
+    setToastNotifications((current) => current.filter((item) => item.id !== id));
+  }, []);
   const [explorerSearchSession, setExplorerSearchSession] = useState<ExplorerSearchSession | null>(
     null,
   );
@@ -1187,15 +1215,85 @@ export function WorkbenchShell({
     }),
     [availableReadingModes, context, currentCommandPost, readyTopicDetail],
   );
+  const lastComposerToast = useRef<LinuxDoComposerFeedback>(null);
+  useEffect(() => {
+    if (nativeComposerFeedback === lastComposerToast.current) return undefined;
+    lastComposerToast.current = nativeComposerFeedback;
+    if (nativeComposerFeedback?.kind !== 'submitted' && nativeComposerFeedback?.kind !== 'error') {
+      return undefined;
+    }
+    const severity = nativeComposerFeedback.kind === 'submitted' ? 'info' : 'error';
+    const message = nativeComposerFeedback.message;
+    const timer = window.setTimeout(() => {
+      pushToastNotification(severity, message, 'Linux DO');
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [nativeComposerFeedback, pushToastNotification]);
+  const runPostActionWithToast = useCallback(
+    async (request: LinuxDoPostActionRequest) => {
+      const outcome = await onRunPostAction(request);
+      const message = describePostActionOutcome(outcome, request.postNumber);
+      if (message) {
+        pushToastNotification(outcome.kind === 'failed' ? 'error' : 'info', message, 'Linux DO');
+      }
+      return outcome;
+    },
+    [onRunPostAction, pushToastNotification],
+  );
+  const copyTextWithToast = useCallback(
+    async (text: string, signal: AbortSignal) => {
+      const copied = await onCopyText(text, signal);
+      if (copied) pushToastNotification('info', 'Copied link to clipboard.');
+      else pushToastNotification('error', 'Clipboard writing is unavailable.');
+      return copied;
+    },
+    [onCopyText, pushToastNotification],
+  );
+  const readDiagnostics = useCallback(() => {
+    const doc = globalThis.document;
+    const route = recognizeLinuxDoRoute(doc.location.href);
+    const detection = detectLinuxDoCapabilities(doc, route);
+    const lines = [`build ${DOCODE_BUILD_TAG}`, `route ${route.kind} ${doc.location.pathname}`];
+    if (detection.state !== 'ready') {
+      lines.push(`capabilities ${detection.state}`);
+      return lines.join('\n');
+    }
+    const reply = detection.reply;
+    const replyControl = reply.control
+      ? reply.control.closest('#topic-footer-buttons')
+        ? 'footer'
+        : reply.control.closest('.timeline-footer-controls')
+          ? 'timeline'
+          : 'post-menu'
+      : 'shortcut';
+    const composerCode = detection.composer.code ? ` (${detection.composer.code})` : '';
+    const replyCode = reply.code ? ` (${reply.code})` : '';
+    lines.push(
+      `user ${detection.currentUser.state} ${detection.currentUser.username ?? '-'}`,
+      `composer ${detection.composer.state}${composerCode}`,
+      `reply ${reply.state}${replyCode} via ${replyControl}`,
+      `posts native=${String(doc.querySelectorAll('.post-stream article[data-post-id]').length)} likeable=${String(
+        detection.posts.filter((post) => post.like.state === 'available').length,
+      )}`,
+      `dom reply-control=${String(doc.querySelector('#reply-control') !== null)} footer=${String(
+        doc.querySelector('#topic-footer-buttons button.create') !== null,
+      )} timeline=${String(doc.querySelector('.timeline-footer-controls button.create') !== null)}`,
+      `diagnostics ${detection.diagnostics.map(({ code }) => code).join(',') || 'none'}`,
+    );
+    return lines.join('\n');
+  }, []);
   const commandRegistry = useMemo(
     () =>
       createWorkbenchCommandRegistry({
-        copyText: onCopyText,
+        copyText: copyTextWithToast,
+        readDiagnostics,
         loadTopicList: onLoadTopicList,
         navigate: onNavigateRoute,
         openComposer: openComposerWithFocusBoundary,
         restoreOriginalView,
-        runPostAction: onRunPostAction,
+        runPostAction: runPostActionWithToast,
         runTabAction: onRunTabAction,
         setPanel: setPanelFromCommand,
         setReadingMode,
@@ -1211,10 +1309,11 @@ export function WorkbenchShell({
       }),
     [
       onNavigateRoute,
-      onCopyText,
+      copyTextWithToast,
+      readDiagnostics,
       onLoadTopicList,
       openComposerWithFocusBoundary,
-      onRunPostAction,
+      runPostActionWithToast,
       onRunTabAction,
       restoreOriginalView,
       setPanelFromCommand,
@@ -1484,6 +1583,7 @@ export function WorkbenchShell({
       />
       <div className="docode-workbench__main">
         <WorkbenchActivityBar
+          onLoadNotifications={onLoadNotifications}
           onOpenExplorer={() => {
             setSidebarOpen((current) => !current);
           }}
@@ -1519,6 +1619,7 @@ export function WorkbenchShell({
           }}
           settingsOpen={settingsOpen}
           sidebarOpen={sidebarOpen}
+          unreadNotifications={unreadNotifications}
         />
         {sidebarOpen ? (
           <WorkbenchExplorer
@@ -2036,9 +2137,29 @@ export function WorkbenchShell({
           onSearch={onSearch}
         />
       ) : null}
+      <WorkbenchNotificationToasts
+        items={toastNotifications}
+        onDismiss={dismissToastNotification}
+      />
       <WorkbenchTooltip />
     </div>
   );
+}
+
+function describePostActionOutcome(
+  outcome: LinuxDoPostActionOutcome,
+  postNumber: number,
+): string | null {
+  if (outcome.kind === 'failed') {
+    return outcome.code === 'aborted' ? null : outcome.message;
+  }
+  if (outcome.kind === 'unchanged') {
+    return `Post ${String(postNumber)} is already bookmarked.`;
+  }
+  if (outcome.action === 'bookmark') return `Bookmarked post ${String(postNumber)}.`;
+  return outcome.active
+    ? `Liked post ${String(postNumber)}.`
+    : `Removed Like from post ${String(postNumber)}.`;
 }
 
 function getTopicPostCommandId(commandId: TopicPostCommandId): string {

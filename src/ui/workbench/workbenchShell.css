@@ -160,14 +160,32 @@ html[data-docode-startup]::after {
 
 [data-docode-workbench-root] .docode-native-composer__host > #reply-control {
   --primary: var(--docode-color-editor-foreground);
+  --primary-very-high: var(--docode-color-foreground);
   --primary-high: var(--docode-color-foreground);
   --primary-medium: var(--docode-color-description-foreground);
   --primary-low: var(--docode-color-input-background);
   --primary-low-mid: var(--docode-color-input-border);
+  --primary-very-low: var(--docode-color-editor-background);
   --secondary: var(--docode-color-editor-background);
+  --secondary-low: var(--docode-color-description-foreground);
+  --secondary-medium: var(--docode-color-description-foreground);
+  --secondary-high: var(--docode-color-input-background);
+  --secondary-very-high: var(--docode-color-input-background);
   --tertiary: var(--docode-color-button-background);
+  --tertiary-low: var(--docode-color-list-hover-background);
+  --tertiary-hover: var(--docode-color-button-hover-background);
+  --quaternary: var(--docode-color-link-foreground);
+  --highlight: var(--docode-color-list-hover-background);
+  --highlight-bg: var(--docode-color-quick-input-background);
+  --highlight-low: var(--docode-color-list-hover-background);
+  --highlight-medium: var(--docode-color-list-hover-background);
+  --highlight-high: var(--docode-color-badge-background);
   --danger: var(--docode-color-error-foreground);
   --content-border-color: var(--docode-color-border);
+  --d-input-bg-color: var(--docode-color-input-background);
+  --d-input-text-color: var(--docode-color-input-foreground);
+  --d-input-border: 1px solid var(--docode-color-input-border);
+  --d-input-border-color: var(--docode-color-input-border);
 
   position: absolute !important;
   inset: 0 !important;
@@ -213,10 +231,493 @@ html[data-docode-startup]::after {
   background: var(--docode-color-button-hover-background);
 }
 
+[data-docode-workbench-root] .docode-native-composer #reply-control .grippie {
+  display: none !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 8px 12px 10px !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-fields {
+  flex: none;
+  margin: 0 0 6px !important;
+  padding: 0 !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .alert,
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-popup,
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-messages,
+[data-docode-workbench-root] .docode-native-composer #reply-control #draft-status,
+[data-docode-workbench-root] .docode-native-composer #reply-control [class*='banner'],
+[data-docode-workbench-root] .docode-native-composer #reply-control [class*='notice'],
+[data-docode-workbench-root] .docode-native-composer #reply-control [class*='char-count'],
+[data-docode-workbench-root] .docode-native-composer #reply-control [class*='word-count'],
+[data-docode-workbench-root] .docode-native-composer #reply-control [class*='presence'],
+[data-docode-workbench-root] .docode-native-composer #reply-control .toggle-preview,
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-preview-wrapper {
+  display: none !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .d-editor-textarea-wrapper
+  > :not(.d-editor-input):not([class*='d-editor-button-bar']):not([class*='popup-tip']):not(
+    :has(.d-editor-input)
+  ) {
+  display: none !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control a {
+  color: var(--docode-color-link-foreground);
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to {
+  display: flex !important;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-details {
+  display: flex !important;
+  gap: 6px;
+  align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--docode-color-description-foreground);
+  font: 12px/22px var(--docode-font-family-ui) !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-action-title,
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-action-title .btn,
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to .btn,
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to button {
+  height: 22px;
+  padding: 0 6px !important;
+  border: 0 !important;
+  border-radius: 4px;
+  color: var(--docode-color-description-foreground) !important;
+  background: transparent !important;
+  font: 12px/22px var(--docode-font-family-ui) !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-action-title:hover,
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .composer-action-title
+  .btn:hover,
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to .btn:hover,
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to button:hover {
+  background: var(--docode-color-toolbar-hover-background) !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to .d-icon,
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-details .d-icon {
+  width: 13px;
+  height: 13px;
+  color: inherit !important;
+  fill: currentcolor !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .composer-controls
+  .toggle-toolbar {
+  display: none !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-controls {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  align-items: center;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-controls .btn,
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-controls button {
+  width: 22px;
+  height: 22px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 4px;
+  color: var(--docode-color-description-foreground) !important;
+  background: transparent !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-controls .btn:hover,
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .composer-controls
+  button:hover {
+  color: var(--docode-color-foreground) !important;
+  background: var(--docode-color-toolbar-hover-background) !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .composer-controls .d-icon {
+  width: 14px;
+  height: 14px;
+  color: inherit !important;
+  fill: currentcolor !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-container {
+  height: 100%;
+  min-height: 0;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-textarea-column {
+  display: flex;
+  flex: 1 1 100% !important;
+  flex-direction: column;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100%;
+  min-height: 0;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-textarea-wrapper,
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .d-editor-textarea-wrapper:focus-within {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--docode-color-input-border) !important;
+  border-bottom: 0 !important;
+  border-radius: 4px 4px 0 0;
+  outline: none !important;
+  background: var(--docode-color-input-background) !important;
+  box-shadow: none !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-input {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  outline: none !important;
+  color: var(--docode-color-input-foreground);
+  background: transparent !important;
+  box-shadow: none !important;
+  font: 13px/20px var(--docode-font-family-ui) !important;
+  resize: none;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-input:focus,
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-input:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .d-editor-input::placeholder {
+  color: var(--docode-color-input-placeholder);
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer:not([data-toolbar='expanded'])
+  #reply-control
+  .d-editor-button-bar__wrap,
+[data-docode-workbench-root]
+  .docode-native-composer:not([data-toolbar='expanded'])
+  #reply-control
+  .d-editor-button-bar {
+  display: none !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar__wrap {
+  display: revert !important;
+  flex: none;
+  margin: 0 !important;
+  border-bottom: 1px solid var(--docode-color-input-border) !important;
+  background: transparent !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar__wrap
+  .d-editor-button-bar {
+  border-bottom: 0 !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar {
+  display: flex !important;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+  margin: 0 !important;
+  padding: 4px 6px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--docode-color-input-border) !important;
+  background: transparent !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar
+  .btn,
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar
+  button {
+  width: 26px;
+  height: 26px;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 4px;
+  color: var(--docode-color-icon-foreground) !important;
+  background: transparent !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar
+  .btn:hover,
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar
+  button:hover {
+  background: var(--docode-color-toolbar-hover-background) !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  #reply-control
+  .d-editor-button-bar
+  .d-icon {
+  width: 14px;
+  height: 14px;
+  color: inherit !important;
+  fill: currentcolor !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-state='draft']
+  .docode-native-composer__toolbar-toggle,
+[data-docode-workbench-root]
+  .docode-native-composer[data-state='saving']
+  .docode-native-composer__toolbar-toggle {
+  display: none;
+}
+
+[data-docode-workbench-root] .docode-native-composer__toolbar-toggle {
+  position: absolute;
+  bottom: 18px;
+  left: 19px;
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: var(--docode-color-description-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+[data-docode-workbench-root] .docode-native-composer__toolbar-toggle:hover {
+  color: var(--docode-color-foreground);
+  background: var(--docode-color-toolbar-hover-background);
+}
+
+[data-docode-workbench-root] .docode-native-composer__toolbar-toggle:focus-visible {
+  outline: 1px solid var(--docode-color-focus-border);
+  outline-offset: -1px;
+}
+
+[data-docode-workbench-root] .docode-native-composer__toolbar-toggle .docode-codicon {
+  transition: transform 120ms ease-out;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer[data-toolbar='expanded']
+  .docode-native-composer__toolbar-toggle
+  .docode-codicon {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-docode-workbench-root] .docode-native-composer__toolbar-toggle .docode-codicon {
+    transition: none;
+  }
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .submit-panel {
+  display: flex;
+  flex: none !important;
+  align-items: center;
+  height: 44px;
+  margin: 0 !important;
+  padding: 4px 6px 4px 40px !important;
+  border: 1px solid var(--docode-color-input-border);
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  background: var(--docode-color-input-background) !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .reply-area:has(.d-editor-input:focus)
+  .d-editor-textarea-wrapper {
+  border-color: var(--docode-color-focus-border) !important;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .reply-area:has(.d-editor-input:focus)
+  .submit-panel {
+  border-color: var(--docode-color-focus-border);
+  border-top: 0;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .save-or-cancel {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to a,
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .composer-actions-reply-target-link {
+  overflow: hidden;
+  color: var(--docode-color-description-foreground) !important;
+  font: 12px/22px var(--docode-font-family-ui);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control .reply-to a:hover,
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  .composer-actions-reply-target-link:hover {
+  color: var(--docode-color-foreground) !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control button.create {
+  order: 99;
+  width: 28px;
+  height: 28px;
+  margin-left: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 4px;
+  overflow: hidden;
+  color: var(--docode-color-button-foreground);
+  text-indent: -200px;
+  background: var(--docode-color-button-background);
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control button.create .d-icon,
+[data-docode-workbench-root] .docode-native-composer #reply-control button.create svg,
+[data-docode-workbench-root] .docode-native-composer #reply-control button.create img {
+  display: none !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control button.create::before {
+  content: '\eaa1' / '';
+  display: block;
+  font: normal normal normal 15px/28px 'docode-codicon';
+  text-align: center;
+  text-indent: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-docode-workbench-root]
+  .docode-native-composer
+  #reply-control
+  button.create:hover:not(:disabled) {
+  background: var(--docode-color-button-hover-background);
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control button.create:disabled {
+  color: var(--docode-color-disabled-foreground);
+  background: transparent;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control a.cancel,
+[data-docode-workbench-root] .docode-native-composer #reply-control .cancel,
+[data-docode-workbench-root] .docode-native-composer #reply-control .discard-button {
+  display: inline-flex;
+  align-items: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 8px !important;
+  border: 0 !important;
+  border-radius: 4px;
+  color: var(--docode-color-description-foreground) !important;
+  background: transparent !important;
+  font: 12px/28px var(--docode-font-family-ui) !important;
+}
+
+[data-docode-workbench-root] .docode-native-composer #reply-control a.cancel:hover,
+[data-docode-workbench-root] .docode-native-composer #reply-control .cancel:hover,
+[data-docode-workbench-root] .docode-native-composer #reply-control .discard-button:hover {
+  color: var(--docode-color-foreground) !important;
+  background: var(--docode-color-toolbar-hover-background) !important;
+}
+
+html[data-docode-presentation] {
+  scrollbar-width: none !important;
+}
+
+html[data-docode-presentation]::-webkit-scrollbar {
+  display: none !important;
+}
+
 html[data-docode-presentation] #dialog-holder,
 html[data-docode-presentation] .d-modal,
 html[data-docode-presentation] .composer-actions-dropdown,
 html[data-docode-presentation] .composer-toggles-menu-content,
+html[data-docode-presentation] #d-menu-portals,
+html[data-docode-presentation] .fk-d-menu,
+html[data-docode-presentation] .fk-d-menu-portal,
+html[data-docode-presentation] .fk-d-tooltip,
+html[data-docode-presentation] .emoji-picker,
+html[data-docode-presentation] .emoji-picker-content,
 html[data-docode-presentation] .emoji-picker-modal {
   z-index: 2147483400 !important;
 }
@@ -645,8 +1146,12 @@ html[data-docode-presentation] .emoji-picker-modal {
 }
 
 [data-docode-workbench-root] .docode-workbench__product-mark {
-  width: 42px;
-  color: #23a8f2;
+  width: 35px;
+}
+
+[data-docode-workbench-root] .docode-workbench__product-mark-icon {
+  width: 16px;
+  height: 16px;
 }
 
 [data-docode-workbench-root] .docode-workbench__traffic-lights {
@@ -802,7 +1307,7 @@ html[data-docode-presentation] .emoji-picker-modal {
   height: 100%;
   overflow: hidden;
   color: var(--docode-color-foreground);
-  font: 12px/22px var(--docode-font-family-ui);
+  font: 13px/22px var(--docode-font-family-ui);
   pointer-events: none;
 }
 
@@ -814,7 +1319,7 @@ html[data-docode-presentation] .emoji-picker-modal {
 
 [data-docode-workbench-root] .docode-workbench__menubar-item {
   flex: none;
-  padding: 0 7px;
+  padding: 0 8px;
   border-radius: 5px;
   white-space: nowrap;
 }
@@ -967,6 +1472,84 @@ html[data-docode-presentation] .emoji-picker-modal {
   height: 1px;
   margin: 4px 10px;
   background: var(--docode-color-menu-separator);
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu {
+  position: fixed;
+  z-index: 1200;
+  width: 300px;
+  padding: 4px 0;
+  overflow: hidden;
+  border: 1px solid var(--docode-color-menu-border);
+  border-radius: var(--docode-corner-radius-large);
+  outline: 0;
+  color: var(--docode-color-menu-foreground);
+  background: var(--docode-color-menu-background);
+  box-shadow: var(--docode-shadow-lg);
+  font: 13px/1.4 var(--docode-font-family-ui);
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-title {
+  padding: 4px 12px 6px;
+  color: var(--docode-color-description-foreground);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-status {
+  padding: 4px 12px 6px;
+  color: var(--docode-color-description-foreground);
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-item {
+  --docode-icon-size: 16px;
+
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: calc(100% - 8px);
+  height: 26px;
+  margin: 0 4px;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: var(--docode-corner-radius-medium);
+  outline: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-item:hover,
+[data-docode-workbench-root] .docode-workbench__account-menu-item:focus {
+  color: var(--docode-color-menu-selection-foreground);
+  background: var(--docode-color-menu-selection-background);
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-item[data-read='true'] {
+  color: var(--docode-color-description-foreground);
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-item[data-read='true']:hover,
+[data-docode-workbench-root] .docode-workbench__account-menu-item[data-read='true']:focus {
+  color: var(--docode-color-menu-selection-foreground);
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--docode-color-button-background);
+  border-radius: 50%;
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-dot[data-read='false'] {
+  background: var(--docode-color-button-background);
+}
+
+[data-docode-workbench-root] .docode-workbench__account-menu-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 [data-docode-workbench-root] .docode-workbench__command-center {
@@ -1141,6 +1724,19 @@ html[data-docode-presentation] .emoji-picker-modal {
   height: 17px;
   border: 2px solid var(--docode-color-activitybar-background);
   border-radius: 50%;
+}
+
+[data-docode-workbench-root] .docode-workbench__activity-badge[data-tone='count'] {
+  right: 3px;
+  bottom: 3px;
+  width: auto;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 20px;
+  color: var(--docode-color-button-foreground);
+  background: var(--docode-color-button-background);
+  font: 600 9px/12px var(--docode-font-family-ui);
 }
 
 [data-docode-workbench-root] .docode-workbench__activity-badge[data-tone='warning'] {
@@ -2425,4 +3021,132 @@ html[data-docode-presentation] .emoji-picker-modal {
   border-top: 0;
   color: var(--docode-color-statusbar-foreground);
   background: var(--docode-color-statusbar-background);
+}
+
+[data-docode-workbench-root] .docode-workbench__notifications {
+  position: fixed;
+  right: 12px;
+  bottom: 34px;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 450px;
+  max-width: calc(100vw - 24px);
+}
+
+[data-docode-workbench-root] .docode-workbench__notification {
+  overflow: hidden;
+  border: 1px solid var(--docode-color-notifications-border);
+  color: var(--docode-color-notifications-foreground);
+  background: var(--docode-color-notifications-background);
+  box-shadow: 0 0 8px 2px var(--docode-color-notifications-shadow);
+  font: 12px/1.5 var(--docode-font-family-ui);
+  animation: docode-notification-slide-in 150ms ease-out;
+}
+
+@keyframes docode-notification-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-docode-workbench-root] .docode-workbench__notification {
+    animation: none;
+  }
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 8px 6px 12px;
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding-top: 1px;
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-icon .docode-codicon {
+  font-size: 16px;
+}
+
+[data-docode-workbench-root]
+  .docode-workbench__notification[data-severity='error']
+  .docode-workbench__notification-icon {
+  color: var(--docode-color-notification-error-icon);
+}
+
+[data-docode-workbench-root]
+  .docode-workbench__notification[data-severity='info']
+  .docode-workbench__notification-icon {
+  color: var(--docode-color-notification-info-icon);
+}
+
+[data-docode-workbench-root]
+  .docode-workbench__notification[data-severity='warning']
+  .docode-workbench__notification-icon {
+  color: var(--docode-color-notification-warning-icon);
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-message {
+  flex: 1;
+  margin: 0;
+  padding-top: 1px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-toolbar {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-tool {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  color: var(--docode-color-icon-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-tool:hover {
+  background: var(--docode-color-toolbar-hover-background);
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-tool:focus-visible {
+  outline: 1px solid var(--docode-color-focus-border);
+  outline-offset: -1px;
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 10px 36px;
+}
+
+[data-docode-workbench-root] .docode-workbench__notification-source {
+  overflow: hidden;
+  color: var(--docode-color-description-foreground);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 import type { ComposerCapability } from '../../linuxdo/capabilities';
 import type { LinuxDoComposerFeedback } from '../../linuxdo/composerAdapter';
@@ -18,6 +18,7 @@ export function NativeComposerSurface({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const wasVisible = useRef(false);
+  const [toolbarExpanded, setToolbarExpanded] = useState(false);
   const visible =
     capability?.root &&
     (capability.state === 'draft' || capability.state === 'open' || capability.state === 'saving');
@@ -36,6 +37,11 @@ export function NativeComposerSurface({
     nativeContentTransfer.restore(root);
     nativeContentTransfer.mount(root, target);
   }, [capability?.root, nativeContentTransfer, revision, visible]);
+
+  useLayoutEffect(() => {
+    const editor = visible ? capability.editor : null;
+    if (editor) applyComposerPlaceholder(editor);
+  }, [capability?.editor, revision, visible]);
 
   useLayoutEffect(() => {
     const becameVisible = Boolean(visible) && !wasVisible.current;
@@ -60,6 +66,7 @@ export function NativeComposerSurface({
       data-dirty={capability.dirty ? 'true' : 'false'}
       data-fullscreen={capability.fullscreen ? 'true' : 'false'}
       data-state={capability.state}
+      data-toolbar={toolbarExpanded ? 'expanded' : 'collapsed'}
     >
       <header className="docode-native-composer__title">
         <span className="docode-native-composer__label">
@@ -82,8 +89,26 @@ export function NativeComposerSurface({
         </span>
       </header>
       <div className="docode-native-composer__host" ref={host} />
+      <button
+        aria-expanded={toolbarExpanded}
+        aria-label="Formatting tools"
+        className="docode-native-composer__toolbar-toggle"
+        onClick={() => {
+          setToolbarExpanded((expanded) => !expanded);
+        }}
+        title="Formatting tools"
+        type="button"
+      >
+        <Codicon name="add" />
+      </button>
     </section>
   );
+}
+
+function applyComposerPlaceholder(editor: HTMLElement): void {
+  if (!(editor instanceof HTMLTextAreaElement)) return;
+  const language = editor.ownerDocument.documentElement.lang;
+  editor.placeholder = language.toLowerCase().startsWith('zh') ? '输入回复…' : 'Type your reply…';
 }
 
 function composerStateLabel(capability: ComposerCapability): string {
