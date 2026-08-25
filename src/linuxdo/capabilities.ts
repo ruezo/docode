@@ -13,7 +13,7 @@ const CAPABILITY_SELECTORS = {
   currentUser: '#current-user, .current-user',
   docodeOwnedRoot: `[data-docode-workbench-root], [${DOCODE_TOPIC_SNAPSHOT_ATTRIBUTE}]`,
   header: '.d-header',
-  like: '.btn-toggle-reaction-like',
+  like: '.post-action-menu__like, .toggle-like, .btn-toggle-reaction-like',
   likeRoot: '.discourse-reactions-actions',
   login: 'button.login-button',
   mainOutlet: '#main-outlet',
@@ -21,6 +21,7 @@ const CAPABILITY_SELECTORS = {
   posts: '.post-stream article[data-post-id], article[data-post-id]',
   postReply: '.post-action-menu__reply',
   reply: '#topic-footer-buttons button.create',
+  replyTimeline: '.timeline-footer-controls button.create',
   showMore: '.post-action-menu__show-more',
 } as const;
 
@@ -36,6 +37,8 @@ const CAPABILITY_MUTATION_SELECTOR = [
   CAPABILITY_SELECTORS.posts,
   CAPABILITY_SELECTORS.showMore,
   '.topic-footer-main-buttons',
+  '.timeline-footer-controls',
+  '#current-user .badge-notification, .current-user .badge-notification',
 ].join(', ');
 const DOCODE_OWNED_PAGINATION_SELECTOR = `[${DOCODE_PAGINATED_POST_ATTRIBUTE}]`;
 
@@ -147,10 +150,7 @@ export function detectLinuxDoCapabilities(
   const diagnostics: CapabilityDiagnostic[] = [];
   const currentUser = detectCurrentUser(document, diagnostics);
   const posts = extractPostCapabilities(document, currentUser, diagnostics);
-  const reply = detectAuthenticatedAction(
-    document.querySelector<HTMLButtonElement>(CAPABILITY_SELECTORS.reply),
-    currentUser,
-  );
+  const reply = detectTopicReplyCapability(document, currentUser);
   addDiagnostic(diagnostics, 'reply', reply.code, null);
   const composer = detectComposer(document, currentUser, reply);
   addDiagnostic(diagnostics, 'composer', composer.code, null);
@@ -165,15 +165,23 @@ export function detectLinuxDoComposerCapability(
   if (route.kind !== 'topic') return null;
   const diagnostics: CapabilityDiagnostic[] = [];
   const currentUser = detectCurrentUser(document, diagnostics);
-  const reply = detectAuthenticatedAction(
-    document.querySelector<HTMLButtonElement>(CAPABILITY_SELECTORS.reply),
-    currentUser,
-  );
+  const reply = detectTopicReplyCapability(document, currentUser);
   return detectComposer(document, currentUser, reply);
 }
 
 export function detectLinuxDoCurrentUser(document: Document): CurrentUserCapability {
   return detectCurrentUser(document, []);
+}
+
+export function detectLinuxDoUnreadNotifications(document: Document): number {
+  const root = document.querySelector<HTMLElement>(CAPABILITY_SELECTORS.currentUser);
+  if (!root) return 0;
+  let total = 0;
+  for (const badge of root.querySelectorAll('.badge-notification')) {
+    const value = Number.parseInt(badge.textContent.trim(), 10);
+    if (Number.isInteger(value) && value > 0) total += value;
+  }
+  return total;
 }
 
 export function detectLinuxDoPostReplyCapability(
@@ -251,6 +259,10 @@ export class LinuxDoCapabilityObserver {
     if (roots.length === 0) return false;
 
     this.#started = true;
+    this.#document.documentElement.setAttribute(
+      'data-docode-observer-roots',
+      roots.length === 1 && roots[0] === this.#document.body ? 'body' : 'narrow',
+    );
     this.#observer = new this.#document.defaultView.MutationObserver(this.#onMutations);
     for (const root of roots) {
       this.#observer.observe(root, {
@@ -264,6 +276,7 @@ export class LinuxDoCapabilityObserver {
           'hidden',
         ],
         attributes: true,
+        characterData: true,
         childList: true,
         subtree: true,
       });
@@ -282,6 +295,11 @@ export class LinuxDoCapabilityObserver {
 
   readonly #onMutations = (mutations: readonly MutationRecord[]) => {
     if (!this.#started || this.#pending || !mutations.some(isCapabilityMutation)) return;
+    const hits = this.#document.documentElement.getAttribute('data-docode-observer-hits');
+    this.#document.documentElement.setAttribute(
+      'data-docode-observer-hits',
+      String((Number.parseInt(hits ?? '0', 10) || 0) + 1),
+    );
     this.#pending = true;
     this.#document.defaultView?.queueMicrotask(() => {
       if (!this.#started || !this.#pending) return;
@@ -291,11 +309,17 @@ export class LinuxDoCapabilityObserver {
   };
 
   #getObservationRoots(): HTMLElement[] {
-    const candidates = [
-      this.#document.querySelector<HTMLElement>(CAPABILITY_SELECTORS.header),
-      this.#document.querySelector<HTMLElement>(CAPABILITY_SELECTORS.mainOutlet),
-      this.#document.querySelector<HTMLElement>(CAPABILITY_SELECTORS.composerRoot),
-    ].filter((root): root is HTMLElement => root !== null);
+    const header = this.#document.querySelector<HTMLElement>(CAPABILITY_SELECTORS.header);
+    const mainOutlet = this.#document.querySelector<HTMLElement>(CAPABILITY_SELECTORS.mainOutlet);
+    const composerRoot = this.#document.querySelector<HTMLElement>(
+      CAPABILITY_SELECTORS.composerRoot,
+    );
+    const present = [header, mainOutlet, composerRoot].filter(
+      (root): root is HTMLElement => root !== null,
+    );
+    if (present.length === 0) return [];
+    if (present.length < 3) return [this.#document.body];
+    const candidates = present;
     return candidates.filter(
       (candidate, index) =>
         !candidates.some(
@@ -312,25 +336,23 @@ function detectCurrentUser(
 ): CurrentUserCapability {
   const loginControl = document.querySelector(CAPABILITY_SELECTORS.login);
   const currentUserRoot = document.querySelector<HTMLElement>(CAPABILITY_SELECTORS.currentUser);
-  if (loginControl && currentUserRoot) {
-    diagnostics.push({
-      code: 'current-user-conflict',
-      feature: 'current-user',
-      postNumber: null,
-    });
-    return { state: 'unknown', username: null };
+  if (currentUserRoot) {
+    if (loginControl) {
+      diagnostics.push({
+        code: 'current-user-conflict',
+        feature: 'current-user',
+        postNumber: null,
+      });
+    }
+    return { state: 'logged-in', username: extractCurrentUsername(document, currentUserRoot) };
   }
   if (loginControl) return { state: 'logged-out', username: null };
-  if (!currentUserRoot) {
-    diagnostics.push({
-      code: 'current-user-unresolved',
-      feature: 'current-user',
-      postNumber: null,
-    });
-    return { state: 'unknown', username: null };
-  }
-
-  return { state: 'logged-in', username: extractCurrentUsername(document, currentUserRoot) };
+  diagnostics.push({
+    code: 'current-user-unresolved',
+    feature: 'current-user',
+    postNumber: null,
+  });
+  return { state: 'unknown', username: null };
 }
 
 function extractCurrentUsername(document: Document, root: HTMLElement): string | null {
@@ -378,6 +400,41 @@ function extractPostCapabilities(
     posts.push({ bookmark, copyLink, like, postId, postNumber });
   }
   return posts;
+}
+
+function detectTopicReplyCapability(
+  document: Document,
+  currentUser: CurrentUserCapability,
+): NativeActionCapability {
+  const capability = detectAuthenticatedAction(findTopicReplyControl(document), currentUser);
+  if (capability.state !== 'unavailable' || capability.code !== 'native-control-not-found') {
+    return capability;
+  }
+  return {
+    active: null,
+    code: null,
+    control: null,
+    fallback: null,
+    revealControl: null,
+    state: 'available',
+  };
+}
+
+function findTopicReplyControl(document: Document): HTMLButtonElement | null {
+  const footerControl = document.querySelector<HTMLButtonElement>(CAPABILITY_SELECTORS.reply);
+  if (footerControl) return footerControl;
+  const timelineControl = document.querySelector<HTMLButtonElement>(
+    CAPABILITY_SELECTORS.replyTimeline,
+  );
+  if (timelineControl) return timelineControl;
+  let fallback: HTMLButtonElement | null = null;
+  for (const control of document.querySelectorAll<HTMLButtonElement>(
+    CAPABILITY_SELECTORS.postReply,
+  )) {
+    if (control.closest(CAPABILITY_SELECTORS.docodeOwnedRoot)) continue;
+    fallback = control;
+  }
+  return fallback;
 }
 
 function findNativePostArticle(document: Document, postNumber: number): HTMLElement | null {
@@ -430,6 +487,7 @@ function detectLikeAction(
     control,
     currentUser,
     (element) =>
+      element.classList.contains('has-like') ||
       element
         .closest(CAPABILITY_SELECTORS.likeRoot)
         ?.classList.contains('has-used-main-reaction') === true,
@@ -679,6 +737,10 @@ function isCapabilityMutation(mutation: MutationRecord): boolean {
       element?.closest(DOCODE_OWNED_PAGINATION_SELECTOR) === null &&
       element.matches(CAPABILITY_MUTATION_SELECTOR)
     );
+  }
+  if (mutation.type === 'characterData') {
+    const parent = mutation.target.parentElement ?? null;
+    return parent !== null && parent.closest(CAPABILITY_SELECTORS.currentUser) !== null;
   }
   return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => {
     const element = toElement(node);

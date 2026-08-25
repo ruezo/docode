@@ -22,6 +22,7 @@ describe('workbench commands', () => {
 
     expect(registry.commands.map(({ name }) => name)).toEqual([
       'help',
+      'doctor',
       'clear',
       'panel',
       'quick-open',
@@ -51,6 +52,7 @@ describe('workbench commands', () => {
     expect(successLines(terminalHelp)).toEqual([
       'Available commands:',
       'help — List available commands',
+      'doctor — Print DOCode capability diagnostics',
       'clear — Clear terminal output',
       'panel <show|hide|toggle|outline|terminal> — Control the bottom panel',
       'mode <code|doc> — Set the reading mode',
@@ -75,6 +77,7 @@ describe('workbench commands', () => {
       getAvailableWorkbenchCommands(registry, listContext(), 'terminal').map(({ name }) => name),
     ).toEqual([
       'help',
+      'doctor',
       'clear',
       'panel',
       'mode',
@@ -95,6 +98,7 @@ describe('workbench commands', () => {
       ).map(({ name }) => name),
     ).toEqual([
       'help',
+      'doctor',
       'clear',
       'panel',
       'mode',
@@ -695,6 +699,7 @@ function topicListDocument(view: 'hot' | 'latest' | 'new' | 'top' | 'unread') {
 function setup() {
   const actions = {
     copyText: vi.fn(() => Promise.resolve(true)),
+    readDiagnostics: vi.fn(() => 'build test\nreply available'),
     loadTopicList: vi.fn<WorkbenchCommandActions['loadTopicList']>(() => Promise.resolve(null)),
     navigate: vi.fn((route: LinuxDoRoute): Promise<LinuxDoNavigationOutcome> =>
       Promise.resolve({ kind: 'navigated', route }),

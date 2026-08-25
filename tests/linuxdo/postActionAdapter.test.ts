@@ -7,6 +7,7 @@ import {
   LinuxDoPostActionAdapter,
   type LinuxDoPostAction,
 } from '../../src/linuxdo/postActionAdapter';
+import type { LinuxDoLikeApiOutcome } from '../../src/linuxdo/postActionApiClient';
 import { recognizeLinuxDoRoute } from '../../src/linuxdo/routes';
 
 const performanceObserverDescriptor = Object.getOwnPropertyDescriptor(
@@ -231,6 +232,80 @@ describe('LinuxDoPostActionAdapter', () => {
     adapter.dispose();
   });
 
+  it('likes an unrendered post through the Like API fallback', async () => {
+    document.body.innerHTML = actionFixture('logged-in');
+    document.querySelector('article')?.remove();
+    const toggles: number[] = [];
+    const adapter = createAdapter({
+      likeApi: {
+        toggle: (postId) => {
+          toggles.push(postId);
+          return Promise.resolve({ active: true, kind: 'confirmed' });
+        },
+      },
+    });
+
+    await expect(adapter.execute(request('like'))).resolves.toEqual({
+      action: 'like',
+      active: true,
+      kind: 'confirmed',
+    });
+    expect(toggles).toEqual([100]);
+    adapter.dispose();
+  });
+
+  it('falls back to the Like API when the rendered post lacks a Like control', async () => {
+    document.body.innerHTML = actionFixture('logged-in');
+    document.querySelector('.discourse-reactions-actions')?.remove();
+    const adapter = createAdapter({
+      likeApi: { toggle: () => Promise.resolve({ active: false, kind: 'confirmed' }) },
+    });
+
+    await expect(adapter.execute(request('like'))).resolves.toEqual({
+      action: 'like',
+      active: false,
+      kind: 'confirmed',
+    });
+    adapter.dispose();
+  });
+
+  it('maps Like API failures onto post action outcomes', async () => {
+    document.body.innerHTML = actionFixture('logged-in');
+    document.querySelector('article')?.remove();
+    const adapter = createAdapter({
+      likeApi: {
+        toggle: () =>
+          Promise.resolve({
+            code: 'authentication-required',
+            kind: 'failed',
+            message: 'Sign in to Linux DO to like posts.',
+            retryable: false,
+          }),
+      },
+    });
+
+    await expect(adapter.execute(request('like'))).resolves.toEqual({
+      action: 'like',
+      code: 'authentication-required',
+      kind: 'failed',
+      message: 'Sign in to Linux DO to like posts.',
+      retryable: false,
+    });
+    adapter.dispose();
+  });
+
+  it('keeps the legacy unavailable outcome when the Like API is disabled', async () => {
+    document.body.innerHTML = actionFixture('logged-in');
+    document.querySelector('article')?.remove();
+    const adapter = createAdapter({ likeApi: null });
+
+    await expect(adapter.execute(request('like'))).resolves.toMatchObject({
+      code: 'native-control-not-found',
+      kind: 'failed',
+    });
+    adapter.dispose();
+  });
+
   it('rejects an already stale generation before touching the native control', async () => {
     document.body.innerHTML = actionFixture('logged-in');
     const control = actionControl('bookmark');
@@ -294,7 +369,15 @@ describe('LinuxDoPostActionAdapter', () => {
   });
 });
 
-function createAdapter(options: { confirmationTimeoutMs?: number; settleDelayMs?: number } = {}) {
+function createAdapter(
+  options: {
+    confirmationTimeoutMs?: number;
+    likeApi?: {
+      toggle(postId: number, signal?: AbortSignal): Promise<LinuxDoLikeApiOutcome>;
+    } | null;
+    settleDelayMs?: number;
+  } = {},
+) {
   return new LinuxDoPostActionAdapter(document, recognizeLinuxDoRoute(window.location.href), 3, {
     confirmationTimeoutMs: 100,
     settleDelayMs: 1,

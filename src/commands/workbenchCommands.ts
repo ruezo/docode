@@ -52,6 +52,7 @@ export const TOGGLE_TERMINAL_COMMAND_ID = 'docode.terminal.toggle';
 export const WORKBENCH_COMMAND_IDS = {
   clear: CLEAR_TERMINAL_COMMAND_ID,
   copyPostLink: 'linuxdo.post.copy-link',
+  doctor: 'docode.diagnostics.doctor',
   commandPalette: COMMAND_PALETTE_COMMAND_ID,
   goto: 'linuxdo.navigation.goto-post',
   help: 'docode.help',
@@ -105,6 +106,7 @@ export interface WorkbenchCommandContext {
 
 export interface WorkbenchCommandActions {
   readonly copyText: (text: string, signal: AbortSignal) => Promise<boolean>;
+  readonly readDiagnostics: () => string;
   readonly navigate: (
     route: LinuxDoRoute,
     expectedGeneration: number,
@@ -163,6 +165,30 @@ export function createWorkbenchCommandRegistry(
     isAvailable: supportedContext,
     name: 'help',
     title: 'List available commands',
+    validateArguments: noArguments,
+  });
+
+  registry.register<undefined>({
+    entryPoints: ['terminal'],
+    execute: ({ context }) => {
+      const documentElement = globalThis.document.documentElement;
+      return {
+        output: {
+          kind: 'lines',
+          lines: [
+            ...actions.readDiagnostics().split('\n'),
+            `ui composer=${context.topicInteraction?.composer.state ?? 'none'} reply=${context.topicInteraction?.reply.state ?? 'none'}`,
+            `ui render=${documentElement.getAttribute('data-docode-render-revision') ?? '-'} observer=${documentElement.getAttribute('data-docode-observer-roots') ?? 'off'}/${documentElement.getAttribute('data-docode-observer-hits') ?? '0'}`,
+          ],
+        },
+        status: 'success',
+      };
+    },
+    help: 'doctor',
+    id: WORKBENCH_COMMAND_IDS.doctor,
+    isAvailable: supportedContext,
+    name: 'doctor',
+    title: 'Print DOCode capability diagnostics',
     validateArguments: noArguments,
   });
 

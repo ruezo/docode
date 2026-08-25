@@ -5,6 +5,7 @@ import {
   type ComposerCapability,
   type NativeActionCapability,
 } from './capabilities';
+import { TOPIC_REPLY_SHORTCUT_EVENT, dispatchTopicReplyShortcutKeys } from './pageBridge';
 import { recognizeLinuxDoRoute, type LinuxDoRoute } from './routes';
 
 export type LinuxDoComposerFailureCode =
@@ -262,7 +263,9 @@ export class LinuxDoComposerAdapter {
       return failed('native-control-disabled', 'Linux DO is already submitting this reply.', false);
     }
     if (composer.state !== 'closed') return unavailableComposer(composer, reply);
-    if (reply.state !== 'available' || !reply.control) return unavailableComposer(composer, reply);
+    if (reply.state !== 'available' || (request.postNumber && !reply.control)) {
+      return unavailableComposer(composer, reply);
+    }
     return this.#dispatchOpen(request, composer, reply, reply.control);
   }
 
@@ -272,7 +275,9 @@ export class LinuxDoComposerAdapter {
     reply: NativeActionCapability,
     control: HTMLElement | null,
   ): Promise<LinuxDoComposerOpenOutcome> {
-    if (!control?.isConnected || !composer.root?.isConnected) {
+    const topicShortcut =
+      !request.postNumber && (!control || control.matches('.post-action-menu__reply'));
+    if (!composer.root?.isConnected || (!topicShortcut && !control?.isConnected)) {
       return failed(
         'native-control-not-found',
         'Linux DO did not expose a connected Reply control.',
@@ -285,7 +290,11 @@ export class LinuxDoComposerAdapter {
     const confirmation = this.#waitForOpen(request, composer.root);
     this.#setFeedback({ kind: 'opening', message: 'Opening the Linux DO composer…' });
     try {
-      control.click();
+      if (topicShortcut) {
+        dispatchTopicReplyShortcut(this.#document);
+      } else if (control) {
+        control.click();
+      }
     } catch {
       confirmation.cancel();
       this.#setFeedback({ kind: 'error', message: 'Linux DO rejected the Reply action.' });
@@ -729,6 +738,11 @@ function getComposerEditorValue(editor: HTMLElement): string {
     return editor.value;
   }
   return editor.textContent;
+}
+
+function dispatchTopicReplyShortcut(document: Document): void {
+  dispatchTopicReplyShortcutKeys(document);
+  document.dispatchEvent(new CustomEvent(TOPIC_REPLY_SHORTCUT_EVENT));
 }
 
 function sameTopic(left: LinuxDoRoute, right: LinuxDoRoute): boolean {

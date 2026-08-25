@@ -1,4 +1,5 @@
 import { detectLinuxDoCapabilities, type NativeActionCapability } from './capabilities';
+import { LinuxDoLikeApiClient, type LinuxDoLikeApiOutcome } from './postActionApiClient';
 import { recognizeLinuxDoRoute, type LinuxDoRoute } from './routes';
 
 export type LinuxDoPostAction = 'bookmark' | 'like';
@@ -39,8 +40,13 @@ export interface LinuxDoPostActionRequest {
   readonly signal?: AbortSignal;
 }
 
+interface LikeApiLike {
+  toggle(postId: number, signal?: AbortSignal): Promise<LinuxDoLikeApiOutcome>;
+}
+
 interface LinuxDoPostActionAdapterOptions {
   readonly confirmationTimeoutMs?: number;
+  readonly likeApi?: LikeApiLike | null;
   readonly settleDelayMs?: number;
 }
 
@@ -50,6 +56,7 @@ const DEFAULT_SETTLE_DELAY_MS = 600;
 export class LinuxDoPostActionAdapter {
   readonly #confirmationTimeoutMs: number;
   readonly #document: Document;
+  readonly #likeApi: LikeApiLike | null;
   readonly #settleDelayMs: number;
   #currentGeneration: number;
   #currentRoute: LinuxDoRoute;
@@ -67,6 +74,8 @@ export class LinuxDoPostActionAdapter {
     this.#currentRoute = initialRoute;
     this.#currentGeneration = initialGeneration;
     this.#confirmationTimeoutMs = options.confirmationTimeoutMs ?? DEFAULT_CONFIRMATION_TIMEOUT_MS;
+    this.#likeApi =
+      options.likeApi === undefined ? new LinuxDoLikeApiClient(document) : options.likeApi;
     this.#settleDelayMs = options.settleDelayMs ?? DEFAULT_SETTLE_DELAY_MS;
   }
 
@@ -110,6 +119,9 @@ export class LinuxDoPostActionAdapter {
 
   async #execute(request: LinuxDoPostActionRequest): Promise<LinuxDoPostActionOutcome> {
     let capability = this.#findCapability(request);
+    if (request.action === 'like' && this.#likeApi && likeRequiresApiFallback(capability)) {
+      return this.#likeViaApi(request, this.#likeApi);
+    }
     if (capability?.state !== 'available') {
       return unavailableOutcome(request.action, capability);
     }
@@ -199,6 +211,17 @@ export class LinuxDoPostActionAdapter {
       ({ postId, postNumber }) => postId === request.postId && postNumber === request.postNumber,
     );
     return post?.[request.action] ?? null;
+  }
+
+  async #likeViaApi(
+    request: LinuxDoPostActionRequest,
+    likeApi: LikeApiLike,
+  ): Promise<LinuxDoPostActionOutcome> {
+    const outcome = await likeApi.toggle(request.postId, request.signal);
+    if (outcome.kind === 'confirmed') {
+      return { action: request.action, active: outcome.active, kind: 'confirmed' };
+    }
+    return failed(request.action, outcome.code, outcome.message, outcome.retryable);
   }
 
   async #revealBookmarkCapability(
@@ -550,6 +573,12 @@ export class LinuxDoPostActionAdapter {
       ready: confirmationReady,
     };
   }
+}
+
+function likeRequiresApiFallback(capability: NativeActionCapability | null): boolean {
+  if (capability === null) return true;
+  if (capability.state === 'unavailable') return true;
+  return capability.state === 'available' && (!capability.control || capability.active === null);
 }
 
 function unavailableOutcome(

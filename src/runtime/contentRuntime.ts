@@ -139,6 +139,29 @@ export class ContentRuntime {
     this.#cleanups.add(() => {
       this.#viewStateObserver.stop();
     });
+    const settleWindow = document.defaultView;
+    if (settleWindow) {
+      for (const delay of [1_000, 3_000, 8_000]) {
+        const timer = settleWindow.setTimeout(() => {
+          this.#capabilityObserver.start();
+          this.#scheduleWorkbenchRefresh();
+        }, delay);
+        this.#cleanups.add(() => {
+          settleWindow.clearTimeout(timer);
+        });
+      }
+    }
+    if (document.readyState === 'loading') {
+      const startObserversWhenReady = () => {
+        this.#capabilityObserver.start();
+        this.#viewStateObserver.start();
+        this.#scheduleWorkbenchRefresh();
+      };
+      document.addEventListener('DOMContentLoaded', startObserversWhenReady, { once: true });
+      this.#cleanups.add(() => {
+        document.removeEventListener('DOMContentLoaded', startObserversWhenReady);
+      });
+    }
     this.#tabDisguise = new TabDisguise(
       document,
       isLinuxDoLocation(document.location) ? recognizeLinuxDoRoute(document.location.href) : null,
@@ -227,6 +250,7 @@ export class ContentRuntime {
   #scheduleWorkbenchRefresh(): void {
     const activeWindow = this.document.defaultView;
     if (!this.#mounted || this.#workbenchRefreshPending || !activeWindow) return;
+    this.#capabilityObserver.start();
     this.#workbenchRefreshPending = true;
     activeWindow.queueMicrotask(() => {
       if (!this.#mounted) {

@@ -128,6 +128,7 @@ export function createTopicDetailDocument(
   route: TopicDetailRoute,
   extraction: TopicExtraction,
   detection: LinuxDoCapabilityDetection,
+  likeStateOverrides?: ReadonlyMap<number, boolean>,
 ): TopicDetailDocument {
   const capabilities = createInteractionCapabilities(detection);
   const capabilityPosts =
@@ -164,9 +165,12 @@ export function createTopicDetailDocument(
     const postCapabilities = capabilityPosts.get(postIdentity(post.id, post.number));
     return {
       author: post.author,
-      capabilities: postCapabilities
-        ? createReplyCapabilities(postCapabilities)
-        : unavailableReplyCapabilities(detection),
+      capabilities: applyLikeStateOverride(
+        postCapabilities
+          ? createReplyCapabilities(postCapabilities, detection)
+          : unavailableReplyCapabilities(detection),
+        likeStateOverrides?.get(post.id),
+      ),
       completeness: post.completeness,
       content: post.content,
       floor: {
@@ -248,11 +252,14 @@ function createInteractionCapabilities(
   };
 }
 
-function createReplyCapabilities(post: PostCapabilities): TopicReplyCapabilityModel {
+function createReplyCapabilities(
+  post: PostCapabilities,
+  detection: LinuxDoCapabilityDetection,
+): TopicReplyCapabilityModel {
   return {
     bookmark: createActionCapability(post.bookmark),
     copyLink: createActionCapability(post.copyLink),
-    like: createActionCapability(post.like),
+    like: withLikeApiFallback(createActionCapability(post.like), detection),
   };
 }
 
@@ -275,8 +282,40 @@ function unavailableReplyCapabilities(
   return {
     bookmark: unavailableAction(code),
     copyLink: unavailableAction(code),
-    like: unavailableAction(code),
+    like: withLikeApiFallback(unavailableAction(code), detection),
   };
+}
+
+function applyLikeStateOverride(
+  capabilities: TopicReplyCapabilityModel,
+  active: boolean | undefined,
+): TopicReplyCapabilityModel {
+  if (active === undefined) return capabilities;
+  const like = capabilities.like;
+  if (like.state === 'authentication-required' || like.state === 'disabled') return capabilities;
+  return {
+    bookmark: capabilities.bookmark,
+    copyLink: capabilities.copyLink,
+    like: { active, code: like.code, fallback: like.fallback, state: 'available' },
+  };
+}
+
+function withLikeApiFallback(
+  capability: TopicActionCapabilityModel,
+  detection: LinuxDoCapabilityDetection,
+): TopicActionCapabilityModel {
+  if (capability.state !== 'unavailable') return capability;
+  if (detection.state !== 'ready' || detection.currentUser.state === 'logged-out') {
+    return capability;
+  }
+  if (
+    capability.code !== 'post-capability-not-found' &&
+    capability.code !== 'native-control-not-found' &&
+    capability.code !== 'current-user-unresolved'
+  ) {
+    return capability;
+  }
+  return { active: capability.active, code: capability.code, fallback: null, state: 'available' };
 }
 
 function unavailableAction(code: TopicDetailCapabilityCode): TopicActionCapabilityModel {

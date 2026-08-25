@@ -68,6 +68,47 @@ describe('LinuxDoComposerAdapter', () => {
     adapter.dispose();
   });
 
+  it('opens a topic reply through the Shift+R shortcut when only floor Reply controls exist', async () => {
+    document.querySelector('#topic-footer-buttons')?.remove();
+    const postReply = document.createElement('button');
+    postReply.className = 'post-action-menu__reply';
+    postReply.textContent = 'Reply';
+    document.querySelector('nav.post-controls')?.append(postReply);
+    const postReplyClick = vi.fn();
+    postReply.addEventListener('click', postReplyClick);
+    const root = getElement('#reply-control');
+    const shortcutKeys: string[] = [];
+    document.body.addEventListener('keypress', (event) => {
+      shortcutKeys.push(
+        `${event.shiftKey ? 'shift+' : ''}${event.key}:${String(Reflect.get(event, 'which'))}`,
+      );
+      if (event.shiftKey && event.key === 'R') root.className = 'open hide-preview';
+    });
+    const adapter = createAdapter();
+
+    const outcome = await adapter.open({ expectedGeneration: 0 });
+
+    expect(outcome).toEqual({ dirty: false, kind: 'opened' });
+    expect(postReplyClick).not.toHaveBeenCalled();
+    expect(shortcutKeys).toEqual(['shift+R:82']);
+    adapter.dispose();
+  });
+
+  it('opens a topic reply through the shortcut when no Reply control is rendered at all', async () => {
+    document.querySelector('#topic-footer-buttons')?.remove();
+    const root = getElement('#reply-control');
+    document.body.addEventListener('keypress', (event) => {
+      if (event.shiftKey && event.key === 'R') root.className = 'open hide-preview';
+    });
+    const adapter = createAdapter();
+
+    await expect(adapter.open({ expectedGeneration: 0 })).resolves.toEqual({
+      dirty: false,
+      kind: 'opened',
+    });
+    adapter.dispose();
+  });
+
   it('rejects duplicate open dispatch and releases the guard after confirmation', async () => {
     const adapter = createAdapter();
     const reply = getButton('#topic-footer-buttons .create');
@@ -195,9 +236,9 @@ describe('LinuxDoComposerAdapter', () => {
     root.hidden = true;
 
     await expect(pending).resolves.toMatchObject({
-      code: 'native-control-not-found',
+      code: 'confirmation-timeout',
       kind: 'failed',
-      message: 'Linux DO removed the compatible Reply composer before it opened.',
+      message: 'Linux DO did not confirm that the composer opened.',
       retryable: true,
     });
     root.hidden = false;

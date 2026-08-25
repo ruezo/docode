@@ -43,25 +43,32 @@ assert.equal(
 );
 assert.equal(
   manifest.content_scripts?.length,
+  2,
+  'Exactly the isolated workbench script and the MAIN-world reply bridge are expected.',
+);
+for (const script of manifest.content_scripts) {
+  assert.deepEqual(
+    script.matches,
+    ['https://linux.do/*'],
+    'The production site scope must remain limited to Linux DO HTTPS pages.',
+  );
+  assert.equal(
+    script.run_at,
+    'document_start',
+    'Content scripts must claim enabled-route presentation before Linux DO paints its loader.',
+  );
+}
+const mainWorldScripts = manifest.content_scripts.filter(({ world }) => world === 'MAIN');
+assert.equal(
+  mainWorldScripts.length,
   1,
-  'Exactly one Linux DO content script is expected.',
-);
-assert.deepEqual(
-  manifest.content_scripts[0]?.matches,
-  ['https://linux.do/*'],
-  'The production site scope must remain limited to Linux DO HTTPS pages.',
+  'Exactly one MAIN-world script is allowed: the reply shortcut bridge.',
 );
 assert.equal(
-  manifest.content_scripts[0]?.run_at,
-  'document_start',
-  'The content script must claim enabled-route presentation before Linux DO paints its loader.',
+  manifest.content_scripts.filter(({ world }) => world === undefined).length,
+  1,
+  'The workbench content script must remain in the isolated world.',
 );
-assert.equal(
-  manifest.content_scripts[0]?.world,
-  undefined,
-  'The content script must remain in the isolated world.',
-);
-
 const csp = JSON.stringify(manifest.content_security_policy ?? 'Manifest V3 default');
 assert.doesNotMatch(
   csp,
@@ -105,6 +112,19 @@ for (const [file, contents] of sourceText) {
   }
 }
 
+const replyBridgeSource =
+  sourceText.get(path.join(projectRoot, 'entrypoints/replybridge.content.ts')) ?? '';
+assert.match(
+  replyBridgeSource,
+  /world:\s*'MAIN'/u,
+  'The reply bridge must declare the MAIN world explicitly.',
+);
+assert.doesNotMatch(
+  replyBridgeSource,
+  /fetch|XMLHttpRequest|browser\.|chrome\./u,
+  'The reply bridge must not touch network or extension APIs from the page world.',
+);
+
 const networkFiles = matchingFiles(
   sourceText,
   /(?:\bfetch|#fetch|\bWebSocket|\bEventSource|\bXMLHttpRequest|\bsendBeacon)\s*(?:\?\.)?\s*\(/u,
@@ -113,11 +133,42 @@ assert.deepEqual(
   networkFiles,
   [
     'src/linuxdo/explorerTopicLoader.ts',
+    'src/linuxdo/notificationsLoader.ts',
+    'src/linuxdo/postActionApiClient.ts',
     'src/linuxdo/searchAdapter.ts',
     'src/linuxdo/topicListPaginator.ts',
     'src/linuxdo/topicPaginator.ts',
   ],
-  'Only the reviewed same-origin Linux DO Explorer, Search, and pagination adapters may initiate network requests.',
+  'Only the reviewed same-origin Linux DO Explorer, Search, notifications, and pagination adapters may initiate network requests.',
+);
+const notificationsSource =
+  sourceText.get(path.join(projectRoot, 'src/linuxdo/notificationsLoader.ts')) ?? '';
+assert.match(
+  notificationsSource,
+  /credentials:\s*'same-origin'/u,
+  'The notifications loader must keep same-origin credentials.',
+);
+assert.match(
+  notificationsSource,
+  /responseUrl\.origin\s*!==\s*origin/u,
+  'The notifications loader must reject cross-origin responses.',
+);
+const likeApiSource =
+  sourceText.get(path.join(projectRoot, 'src/linuxdo/postActionApiClient.ts')) ?? '';
+assert.match(
+  likeApiSource,
+  /credentials:\s*'same-origin'/u,
+  'The Like API client must keep same-origin credentials.',
+);
+assert.match(
+  likeApiSource,
+  /responseUrl\.origin\s*!==\s*origin/u,
+  'The Like API client must reject cross-origin responses.',
+);
+assert.match(
+  likeApiSource,
+  /'X-CSRF-Token'/u,
+  'The Like API client must authenticate mutations with the Linux DO session token.',
 );
 const explorerSource =
   sourceText.get(path.join(projectRoot, 'src/linuxdo/explorerTopicLoader.ts')) ?? '';

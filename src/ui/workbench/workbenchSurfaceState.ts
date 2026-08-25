@@ -34,6 +34,7 @@ export interface WorkbenchViewSnapshot {
 export interface WorkbenchViewSnapshotOptions {
   readonly deferTopicListCompatibilityError?: boolean;
   readonly deferTopicCompatibilityError?: boolean;
+  readonly likeStateOverrides?: ReadonlyMap<number, boolean> | undefined;
   readonly resolveNativeContent?: NativePostContentResolver | undefined;
 }
 
@@ -81,7 +82,12 @@ export function createWorkbenchViewSnapshot(
         ? { issues: [], posts: [], state: 'loading', topic: null }
         : extractedTopic;
     const capabilities = detectLinuxDoCapabilities(document, route);
-    const topicDetailDocument = createTopicDetailDocument(route, extraction, capabilities);
+    const topicDetailDocument = createTopicDetailDocument(
+      route,
+      extraction,
+      capabilities,
+      options.likeStateOverrides,
+    );
     const nativeComposer = capabilities.state === 'ready' ? capabilities.composer : null;
     switch (extraction.state) {
       case 'ready':

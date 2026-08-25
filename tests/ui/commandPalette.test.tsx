@@ -80,6 +80,7 @@ describe('CommandPalette', () => {
 function setup() {
   const actions = {
     copyText: vi.fn(() => Promise.resolve(true)),
+    readDiagnostics: vi.fn(() => 'build test'),
     loadTopicList: vi.fn<WorkbenchCommandActions['loadTopicList']>(() => Promise.resolve(null)),
     navigate: vi.fn((route: LinuxDoRoute): Promise<LinuxDoNavigationOutcome> =>
       Promise.resolve({ kind: 'navigated', route }),

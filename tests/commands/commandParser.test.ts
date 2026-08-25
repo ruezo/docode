@@ -34,12 +34,39 @@ describe('parseCommandInput', () => {
     });
   });
 
-  it('rejects unapproved quoted or escaped argument syntax', () => {
+  it('groups double-quoted arguments and honors backslash escapes', () => {
+    expect(parseCommandInput('reply "hello there world"')).toEqual({
+      arguments: ['hello there world'],
+      commandName: 'reply',
+      raw: 'reply "hello there world"',
+      status: 'parsed',
+    });
+    expect(parseCommandInput('reply 3 "quoted \\"inner\\" text"')).toEqual({
+      arguments: ['3', 'quoted "inner" text'],
+      commandName: 'reply',
+      raw: 'reply 3 "quoted \\"inner\\" text"',
+      status: 'parsed',
+    });
+    expect(parseCommandInput('open escaped\\ value')).toEqual({
+      arguments: ['escaped value'],
+      commandName: 'open',
+      raw: 'open escaped\\ value',
+      status: 'parsed',
+    });
+    expect(parseCommandInput('search ""')).toEqual({
+      arguments: [''],
+      commandName: 'search',
+      raw: 'search ""',
+      status: 'parsed',
+    });
+  });
+
+  it('rejects unterminated quotes and trailing escapes', () => {
     expect(parseCommandInput('open "unterminated')).toMatchObject({
       error: { code: 'unsupported-syntax' },
       status: 'error',
     });
-    expect(parseCommandInput('open escaped\\ value')).toMatchObject({
+    expect(parseCommandInput('open trailing\\')).toMatchObject({
       error: { code: 'unsupported-syntax' },
       status: 'error',
     });

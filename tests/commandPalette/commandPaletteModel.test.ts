@@ -77,6 +77,7 @@ describe('command palette model', () => {
 function actions(): WorkbenchCommandActions {
   return {
     copyText: vi.fn(() => Promise.resolve(true)),
+    readDiagnostics: vi.fn(() => 'build test\nreply available'),
     loadTopicList: vi.fn<WorkbenchCommandActions['loadTopicList']>(() => Promise.resolve(null)),
     navigate: vi.fn((route: LinuxDoRoute): Promise<LinuxDoNavigationOutcome> =>
       Promise.resolve({ kind: 'navigated', route }),

@@ -148,6 +148,68 @@ describe('createTopicDetailDocument', () => {
     });
   });
 
+  it('keeps Like actionable through the API fallback for signed-in unbound posts', () => {
+    document.body.innerHTML = topicFixture({ partialSecond: true });
+    document.querySelector('.d-header')?.replaceChildren();
+    const currentUser = document.createElement('div');
+    currentUser.id = 'current-user';
+    currentUser.setAttribute('data-username', 'fixture-user');
+    document.querySelector('.d-header')?.append(currentUser);
+    const route = topicRoute();
+    const extraction = extractTopic(document, route);
+    document.querySelector('#post_2')?.parentElement?.removeAttribute('data-post-number');
+    const detection = detectLinuxDoCapabilities(document, route);
+
+    const model = createTopicDetailDocument(route, extraction, detection);
+
+    if (model.state !== 'ready') throw new Error('Expected a ready topic model.');
+    expect(model.replies[1]?.capabilities).toMatchObject({
+      bookmark: { code: 'post-capability-not-found', state: 'unavailable' },
+      copyLink: { code: 'post-capability-not-found', state: 'unavailable' },
+      like: { code: 'post-capability-not-found', fallback: null, state: 'available' },
+    });
+  });
+
+  it('keeps Like actionable through the API when the current user cannot be resolved', () => {
+    document.body.innerHTML = topicFixture();
+    document.querySelector('.d-header')?.replaceChildren();
+    const route = topicRoute();
+    const extraction = extractTopic(document, route);
+    const detection = detectLinuxDoCapabilities(document, route);
+
+    const model = createTopicDetailDocument(route, extraction, detection);
+
+    if (model.state !== 'ready') throw new Error('Expected a ready topic model.');
+    expect(model.capabilities.currentUserState).toBe('unknown');
+    expect(model.replies[0]?.capabilities.like).toMatchObject({
+      code: 'current-user-unresolved',
+      state: 'available',
+    });
+    expect(model.replies[0]?.capabilities.bookmark.state).toBe('unavailable');
+  });
+
+  it('reflects confirmed Like overrides even for posts without native bindings', () => {
+    document.body.innerHTML = topicFixture({ partialSecond: true });
+    document.querySelector('.d-header')?.replaceChildren();
+    const currentUser = document.createElement('div');
+    currentUser.id = 'current-user';
+    currentUser.setAttribute('data-username', 'fixture-user');
+    document.querySelector('.d-header')?.append(currentUser);
+    const route = topicRoute();
+    const extraction = extractTopic(document, route);
+    document.querySelector('#post_2')?.parentElement?.removeAttribute('data-post-number');
+    const detection = detectLinuxDoCapabilities(document, route);
+
+    const model = createTopicDetailDocument(route, extraction, detection, new Map([[101, true]]));
+
+    if (model.state !== 'ready') throw new Error('Expected a ready topic model.');
+    expect(model.replies[1]?.capabilities.like).toMatchObject({
+      active: true,
+      state: 'available',
+    });
+    expect(model.replies[0]?.capabilities.like.active).not.toBe(true);
+  });
+
   it('retains an incremental loaded window when the requested floor is not present', () => {
     window.history.replaceState({}, '', '/t/synthetic-topic/42/8');
     document.body.innerHTML = topicFixture();

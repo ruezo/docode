@@ -29,14 +29,11 @@ export function parseCommandInput(raw: string): CommandParseResult {
       'Command input contains an unsupported control character.',
     );
   }
-  if (raw.includes('"') || raw.includes('\\')) {
-    return parseError(raw, 'unsupported-syntax', 'Quoted and escaped arguments are not supported.');
-  }
 
-  const trimmed = raw.trim();
-  if (!trimmed) return { raw, status: 'empty' };
-
-  const tokens = trimmed.split(/[ \t]+/u);
+  const tokenized = tokenizeCommandInput(raw);
+  if (!tokenized.ok) return parseError(raw, 'unsupported-syntax', tokenized.message);
+  const { tokens } = tokenized;
+  if (tokens.length === 0) return { raw, status: 'empty' };
   if (tokens.length > MAX_COMMAND_TOKEN_COUNT) {
     return parseError(raw, 'too-many-tokens', 'Command input contains too many arguments.');
   }
@@ -48,6 +45,50 @@ export function parseCommandInput(raw: string): CommandParseResult {
     raw,
     status: 'parsed',
   };
+}
+
+type CommandTokenization =
+  | { readonly ok: true; readonly tokens: readonly string[] }
+  | { readonly ok: false; readonly message: string };
+
+function tokenizeCommandInput(raw: string): CommandTokenization {
+  const tokens: string[] = [];
+  let current = '';
+  let hasCurrent = false;
+  let quoted = false;
+  for (let index = 0; index < raw.length; index += 1) {
+    const character = raw.charAt(index);
+    if (character === '\\') {
+      const next = raw.charAt(index + 1);
+      if (next === '') {
+        return { message: 'A trailing backslash must escape a character.', ok: false };
+      }
+      current += next;
+      hasCurrent = true;
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      hasCurrent = true;
+      continue;
+    }
+    if (!quoted && (character === ' ' || character === '\t')) {
+      if (hasCurrent) {
+        tokens.push(current);
+        current = '';
+        hasCurrent = false;
+      }
+      continue;
+    }
+    current += character;
+    hasCurrent = true;
+  }
+  if (quoted) {
+    return { message: 'A quoted argument must be closed with a matching quote.', ok: false };
+  }
+  if (hasCurrent) tokens.push(current);
+  return { ok: true, tokens };
 }
 
 function hasUnsupportedControlCharacter(value: string): boolean {

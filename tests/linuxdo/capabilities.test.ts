@@ -8,6 +8,7 @@ import {
   detectLinuxDoCapabilities,
   detectLinuxDoCurrentUser,
   detectLinuxDoPostReplyCapability,
+  detectLinuxDoUnreadNotifications,
   LinuxDoCapabilityObserver,
   summarizeCapabilityDetection,
 } from '../../src/linuxdo/capabilities';
@@ -193,6 +194,111 @@ describe('detectLinuxDoCapabilities', () => {
     });
   });
 
+  it('detects the Glimmer post-menu Like control and its has-like state', () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    const like = document.querySelector('.btn-toggle-reaction-like');
+    if (!like) throw new Error('Missing Like fixture');
+    like.className = 'btn post-action-menu__like toggle-like has-like';
+
+    const result = detectLinuxDoCapabilities(document, recognizeLinuxDoRoute(window.location.href));
+
+    expect(result.state === 'ready' ? result.posts[0]?.like : null).toMatchObject({
+      active: true,
+      code: null,
+      state: 'available',
+    });
+
+    like.classList.remove('has-like');
+    const inactive = detectLinuxDoCapabilities(
+      document,
+      recognizeLinuxDoRoute(window.location.href),
+    );
+    expect(inactive.state === 'ready' ? inactive.posts[0]?.like : null).toMatchObject({
+      active: false,
+      state: 'available',
+    });
+  });
+
+  it('treats a rendered current-user root as signed-in even beside a stray login button', () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    document
+      .querySelector('.d-header')
+      ?.insertAdjacentHTML('beforeend', '<button class="login-button">Log in</button>');
+
+    const result = detectLinuxDoCapabilities(document, recognizeLinuxDoRoute(window.location.href));
+
+    expect(result.state === 'ready' ? result.currentUser : null).toEqual({
+      state: 'logged-in',
+      username: 'fixture-user',
+    });
+    expect(result.state === 'ready' ? result.diagnostics : []).toEqual(
+      expect.arrayContaining([
+        { code: 'current-user-conflict', feature: 'current-user', postNumber: null },
+      ]),
+    );
+    expect(result.state === 'ready' ? result.posts[0]?.like.state : null).toBe('available');
+  });
+
+  it('falls back to a rendered post Reply control when the topic footer is not loaded', () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    document.querySelector('#topic-footer-buttons')?.remove();
+    const postReply = document.createElement('button');
+    postReply.className = 'post-action-menu__reply';
+    postReply.textContent = 'Reply';
+    document.querySelector('nav.post-controls')?.append(postReply);
+
+    const result = detectLinuxDoCapabilities(document, recognizeLinuxDoRoute(window.location.href));
+
+    expect(result.state === 'ready' ? result.reply : null).toMatchObject({ state: 'available' });
+    expect(result.state === 'ready' ? result.reply.control : null).toBe(postReply);
+  });
+
+  it('falls back to the always-rendered timeline Reply control before floor controls', () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    document.querySelector('#topic-footer-buttons')?.remove();
+    const timeline = document.createElement('div');
+    timeline.className = 'timeline-footer-controls';
+    const timelineReply = document.createElement('button');
+    timelineReply.className = 'btn btn-primary create';
+    timelineReply.textContent = 'Reply';
+    timeline.append(timelineReply);
+    document.querySelector('#main-outlet')?.append(timeline);
+    const postReply = document.createElement('button');
+    postReply.className = 'post-action-menu__reply';
+    document.querySelector('nav.post-controls')?.append(postReply);
+
+    const result = detectLinuxDoCapabilities(document, recognizeLinuxDoRoute(window.location.href));
+
+    expect(result.state === 'ready' ? result.reply.control : null).toBe(timelineReply);
+    expect(result.state === 'ready' ? result.reply.state : null).toBe('available');
+  });
+
+  it('keeps topic Reply available for signed-in users when no Reply control is rendered', () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    document.querySelector('#topic-footer-buttons')?.remove();
+
+    const result = detectLinuxDoCapabilities(document, recognizeLinuxDoRoute(window.location.href));
+
+    expect(result.state === 'ready' ? result.reply : null).toMatchObject({
+      control: null,
+      state: 'available',
+    });
+    expect(result.state === 'ready' ? result.composer.state : null).toBe('closed');
+  });
+
+  it('prefers the topic footer Reply control over rendered post Reply controls', () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    const postReply = document.createElement('button');
+    postReply.className = 'post-action-menu__reply';
+    document.querySelector('nav.post-controls')?.append(postReply);
+
+    const result = detectLinuxDoCapabilities(document, recognizeLinuxDoRoute(window.location.href));
+
+    expect(result.state === 'ready' ? result.reply.control : null).toBe(
+      document.querySelector('#topic-footer-buttons button.create'),
+    );
+  });
+
   it('excludes DOCode-owned reply framing from native post capability detection', () => {
     document.body.innerHTML = `${capabilityFixture({ user: 'logged-in' })}
       <div data-docode-workbench-root="owner"><div data-post-number="1">
@@ -301,7 +407,73 @@ describe('detectLinuxDoCapabilities', () => {
   });
 });
 
+describe('detectLinuxDoUnreadNotifications', () => {
+  it('sums numeric current-user badges and ignores badges elsewhere', () => {
+    document.body.innerHTML = `
+      <header class="d-header">
+        <div id="current-user" data-username="fixture-user">
+          <span class="badge-notification unread-notifications">3</span>
+          <span class="badge-notification with-icon"></span>
+          <span class="badge-notification new-pms">2</span>
+        </div>
+      </header>
+      <main id="main-outlet"><span class="badge-notification">9</span></main>`;
+
+    expect(detectLinuxDoUnreadNotifications(document)).toBe(5);
+  });
+
+  it('returns zero without a current-user root or valid numeric badges', () => {
+    document.body.innerHTML =
+      '<header class="d-header"><button class="login-button">Log in</button></header>';
+    expect(detectLinuxDoUnreadNotifications(document)).toBe(0);
+
+    document.body.innerHTML =
+      '<header class="d-header"><div id="current-user"><span class="badge-notification">-4</span></div></header>';
+    expect(detectLinuxDoUnreadNotifications(document)).toBe(0);
+  });
+});
+
 describe('LinuxDoCapabilityObserver', () => {
+  it('reacts to unread badge insertions and in-place count updates', async () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    const currentUser = document.querySelector('#current-user');
+    if (!currentUser) throw new Error('Missing current-user fixture.');
+    const onChange = vi.fn();
+    const observer = new LinuxDoCapabilityObserver(document, onChange);
+    expect(observer.start()).toBe(true);
+
+    const badge = document.createElement('span');
+    badge.className = 'badge-notification unread-notifications';
+    badge.textContent = '1';
+    currentUser.append(badge);
+    await nextMutationTurn();
+    expect(onChange).toHaveBeenCalledOnce();
+
+    const count = badge.firstChild;
+    if (!count) throw new Error('Missing badge text fixture.');
+    count.nodeValue = '2';
+    await nextMutationTurn();
+    expect(onChange).toHaveBeenCalledTimes(2);
+    observer.stop();
+  });
+
+  it('observes from the document body until Linux DO renders the composer root', async () => {
+    document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
+    document.querySelector('#reply-control')?.remove();
+    const onChange = vi.fn();
+    const observer = new LinuxDoCapabilityObserver(document, onChange);
+    expect(observer.start()).toBe(true);
+
+    const composerRoot = document.createElement('div');
+    composerRoot.id = 'reply-control';
+    composerRoot.className = 'closed hide-preview';
+    document.body.append(composerRoot);
+    await nextMutationTurn();
+
+    expect(onChange).toHaveBeenCalledOnce();
+    observer.stop();
+  });
+
   it('coalesces only relevant mutations across narrow roots and disconnects cleanly', async () => {
     document.body.innerHTML = capabilityFixture({ user: 'logged-in' });
     const onChange = vi.fn();
