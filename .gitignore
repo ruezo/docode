@@ -11,3 +11,5 @@ playwright-report/
 test-results/
 
 *.zip
+
+.github/media/

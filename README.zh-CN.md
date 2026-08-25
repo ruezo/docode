@@ -38,6 +38,12 @@ public class LinuxDo {
 }
 ```
 
+## 演示
+
+https://github.com/user-attachments/assets/ac8673c9-1cd4-4bfe-9631-542461a1bb06
+
+
+
 ## 特性
 
 - **完整的工作台** —— Activity Bar、资源管理器、编辑器标签页、面包屑、minimap、大纲、状态栏、底部面板，像素级还原 Dark Modern。

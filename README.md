@@ -39,6 +39,12 @@ public class LinuxDo {
 ```
 
 
+## Demo
+
+https://github.com/user-attachments/assets/ac8673c9-1cd4-4bfe-9631-542461a1bb06
+
+
+
 ## Features
 
 - **The full workbench** — Activity Bar, Explorer, editor tabs, breadcrumbs, minimap, Outline, status bar, and a bottom panel, faithful to Dark Modern down to the pixel.
