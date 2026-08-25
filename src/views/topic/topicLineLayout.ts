@@ -36,7 +36,7 @@ export function createTopicLineLayout(document: ReadyTopicDetailDocument): Topic
       isOriginalPosterReply(reply, originalPoster),
     );
     replies.set(reply.id, layout);
-    nextLine = layout.close + 1;
+    nextLine = layout.close + 2;
   });
   return { replies, topicClose: nextLine };
 }

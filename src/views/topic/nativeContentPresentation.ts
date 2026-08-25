@@ -41,7 +41,7 @@ const BLOCK_LINE_TAGS = new Set([
 ]);
 const activeLineNumberLayers = new WeakMap<HTMLElement, () => void>();
 
-export type NativeContentLineKind = 'code' | 'heading' | 'media' | 'quote' | 'text';
+export type NativeContentLineKind = 'blank' | 'code' | 'heading' | 'media' | 'quote' | 'text';
 
 export interface NativeContentLineSummary {
   readonly indent: number;
@@ -279,6 +279,11 @@ function nativeLineKind(element: HTMLElement): NativeContentLineKind {
   if (/^h[1-6]$/.test(tagName)) return 'heading';
   if (tagName === 'pre' || tagName === 'code') return 'code';
   if (tagName === 'figure' || element.matches('img, video, audio')) return 'media';
+  const text = normalizeLineText(element.textContent);
+  if (!text && element.querySelector(`img:not(${INLINE_IMAGE_SELECTOR}), video, audio`)) {
+    return 'media';
+  }
+  if (!text && !element.querySelector('img, video, audio')) return 'blank';
   return 'text';
 }
 

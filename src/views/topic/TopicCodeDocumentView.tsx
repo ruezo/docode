@@ -1,4 +1,5 @@
 import {
+  Fragment,
   memo,
   useCallback,
   useEffect,
@@ -699,32 +700,43 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
       />
       <div className="docode-topic-code__replies">
         {document.replies.map((reply) => (
-          <TopicReply
-            active={reply.id === resolvedActiveReplyId}
-            collapsed={collapsedReplyIds.has(reply.id)}
-            key={`${String(reply.id)}:${String(reply.floor.number)}`}
-            docLineLayout={
-              docLineLayout.replies.get(reply.id) ?? createFallbackDocReplyLineLayout(reply)
-            }
-            lineLayout={lineLayout.replies.get(reply.id) ?? createFallbackReplyLineLayout(reply)}
-            mode={mode}
-            nativeContentTransfer={nativeContentTransfer}
-            onFocus={focusActiveReply}
-            onCursorLine={publishCursorLine}
-            onMoveFocus={focusReply}
-            onResolvePostCommand={onResolvePostCommand}
-            onRunPostCommand={onRunPostCommand}
-            onToggleCollapsed={toggleReplyCollapsed}
-            registerElement={registerReplyElement}
-            reply={reply}
-            replyTarget={
-              reply.replyToPostNumber === null
-                ? null
-                : (repliesByFloor.get(reply.replyToPostNumber) ?? null)
-            }
-            revision={revision}
-            showAuthorAvatar={showAuthorAvatars}
-          />
+          <Fragment key={`${String(reply.id)}:${String(reply.floor.number)}`}>
+            <TopicReply
+              active={reply.id === resolvedActiveReplyId}
+              collapsed={collapsedReplyIds.has(reply.id)}
+              docLineLayout={
+                docLineLayout.replies.get(reply.id) ?? createFallbackDocReplyLineLayout(reply)
+              }
+              lineLayout={lineLayout.replies.get(reply.id) ?? createFallbackReplyLineLayout(reply)}
+              mode={mode}
+              nativeContentTransfer={nativeContentTransfer}
+              onFocus={focusActiveReply}
+              onCursorLine={publishCursorLine}
+              onMoveFocus={focusReply}
+              onResolvePostCommand={onResolvePostCommand}
+              onRunPostCommand={onRunPostCommand}
+              onToggleCollapsed={toggleReplyCollapsed}
+              registerElement={registerReplyElement}
+              reply={reply}
+              replyTarget={
+                reply.replyToPostNumber === null
+                  ? null
+                  : (repliesByFloor.get(reply.replyToPostNumber) ?? null)
+              }
+              revision={revision}
+              showAuthorAvatar={showAuthorAvatars}
+            />
+            {mode === 'code' ? (
+              <div
+                aria-hidden="true"
+                className="docode-topic-code__method-gap"
+                data-docode-editor-line={
+                  (lineLayout.replies.get(reply.id) ?? createFallbackReplyLineLayout(reply)).close +
+                  1
+                }
+              />
+            ) : null}
+          </Fragment>
         ))}
       </div>
       <TopicLoadingBoundary

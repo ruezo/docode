@@ -295,6 +295,33 @@ try {
       status: 200,
     }),
   );
+  await context.route('https://linux.do/notifications.json*', (route) =>
+    route.fulfill({
+      body: JSON.stringify({
+        notifications: [
+          {
+            data: { display_username: 'fixture-author', topic_title: 'Synthetic reply' },
+            id: 501,
+            notification_type: 2,
+            post_number: 2,
+            read: false,
+            slug: 'synthetic-topic',
+            topic_id: 42,
+          },
+          {
+            data: { display_username: 'fixture-author', topic_title: 'Synthetic like' },
+            id: 502,
+            notification_type: 5,
+            read: true,
+            slug: 'synthetic-topic',
+            topic_id: 42,
+          },
+        ],
+      }),
+      contentType: 'application/json',
+      status: 200,
+    }),
+  );
   await context.route('https://linux.do/new', (route) =>
     route.fulfill({
       body: topicListFixtureHtml(),
@@ -4288,7 +4315,7 @@ try {
     diagnosticCodes: ['native-control-not-found', 'composer-not-found'],
     generation: compatibilityCapabilityGeneration,
     postCount: 2,
-    replyState: 'unavailable',
+    replyState: 'available',
     state: 'ready',
     userState: 'logged-in',
   });
@@ -4383,7 +4410,7 @@ try {
     diagnosticCodes: ['native-control-not-found', 'composer-not-found'],
     generation: Number(compatibilityCapabilityGeneration) + 1,
     postCount: 2,
-    replyState: 'unavailable',
+    replyState: 'available',
     state: 'ready',
     userState: 'logged-in',
   });
@@ -4799,7 +4826,7 @@ try {
     keywordFontSize: '13px',
     nativeRootCount: 2,
     postCount: 2,
-    requestedLineNumber: '21',
+    requestedLineNumber: '22',
     requestedLineNumberColor: 'rgb(204, 204, 204)',
     sourceNativeRootCount: 0,
     titleColor: 'rgb(78, 201, 176)',
@@ -5015,7 +5042,7 @@ try {
     quoteTitleHeight: 20,
     topicCloseBackground: 'rgba(0, 0, 0, 0)',
     topicCloseBorderRadius: '0px',
-    topicCloseLineNumber: '37',
+    topicCloseLineNumber: '39',
   });
   await topicFixturePage
     .locator('.docode-topic-code__content-slot aside.quote')
@@ -5143,8 +5170,16 @@ try {
   const requestedLoggedOutReply = topicFixturePage.locator(
     '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="2"]',
   );
-  await requestedLoggedOutReply.focus();
   await requestedLoggedOutReply.waitFor();
+  await requestedLoggedOutReply.locator('.docode-topic-code__metadata').first().click();
+  await topicFixturePage.waitForFunction(
+    () =>
+      document
+        .querySelector(
+          '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="2"]',
+        )
+        ?.getAttribute('data-active') === 'true',
+  );
   assert.equal(await requestedLoggedOutReply.getAttribute('data-active'), 'true');
   const collapseReply = requestedLoggedOutReply.getByRole('button', {
     name: 'Collapse reply 2',
@@ -5406,6 +5441,23 @@ try {
   });
   assert.equal(await confirmedLikeAction.getAttribute('aria-pressed'), 'true');
   assert.equal(await confirmedLikeAction.getAttribute('aria-label'), 'Unlike: liked on Linux DO');
+  const likeToast = nativeActionPage.locator(
+    '[data-docode-workbench-root] .docode-workbench__notification',
+    { hasText: 'Liked post 1.' },
+  );
+  await likeToast.waitFor();
+  assert.equal(await likeToast.getAttribute('data-severity'), 'info');
+  assert.match(
+    (await likeToast.locator('.docode-workbench__notification-source').textContent()) ?? '',
+    /^Source: Linux DO$/u,
+  );
+  await nativeActionPage.screenshot({
+    path: path.join(nativeActionEvidenceDir, 'notification-toast-like.png'),
+  });
+  await likeToast.getByRole('button', { name: 'Clear Notification' }).click();
+  await likeToast.waitFor({ state: 'detached' });
+  await nativeReply.hover();
+  await nativeMoreActions.waitFor();
   await nativeMoreActions.click();
   await nativeActionPage.getByRole('menuitem', { name: 'Remove Like' }).waitFor();
   await nativeActionPage.screenshot({
@@ -5536,7 +5588,7 @@ try {
   const nativeComposerOpen = await readNativeComposer(nativeActionPage);
   assert.deepEqual(nativeComposerOpen, {
     dirty: 'false',
-    editorFontFamilyIncludesMono: true,
+    editorUsesWorkbenchUiFont: true,
     exactNativeRootCount: 1,
     nativeRootInSource: false,
     state: 'open',
@@ -5633,6 +5685,43 @@ try {
   );
   assert.equal(await nativeComposerEditor.inputValue(), 'Discarded authoritative draft');
   assert.equal(await nativeActionPage.locator('.docode-native-composer #reply-control').count(), 1);
+  assert.equal(
+    await nativeActionPage
+      .locator('.docode-workbench__activity-badge[data-tone="count"]')
+      .textContent(),
+    '3',
+  );
+  const accountControl = nativeActionPage.getByRole('button', {
+    name: 'Linux DO account, 3 unread notifications',
+  });
+  assert.equal(await accountControl.count(), 1);
+  await accountControl.click();
+  const accountMenu = nativeActionPage.getByRole('menu', { name: 'Linux DO notifications' });
+  await accountMenu.waitFor();
+  const firstNotification = accountMenu.getByRole('menuitem', {
+    name: '@fixture-author · Synthetic reply',
+  });
+  await firstNotification.waitFor();
+  assert.equal(
+    await firstNotification.getAttribute('href'),
+    'https://linux.do/t/synthetic-topic/42/2',
+  );
+  assert.equal(await firstNotification.getAttribute('data-read'), 'false');
+  assert.equal(
+    await accountMenu
+      .getByRole('menuitem', { name: '@fixture-author · Synthetic like' })
+      .getAttribute('data-read'),
+    'true',
+  );
+  const accountMenuItems = accountMenu.getByRole('menuitem');
+  assert.equal(await accountMenuItems.count(), 3);
+  assert.equal(await accountMenuItems.last().textContent(), 'Preferences');
+  assert.equal(await accountMenuItems.last().getAttribute('href'), 'https://linux.do/my/activity');
+  await nativeActionPage.screenshot({
+    path: path.join(nativeComposerEvidenceDir, 'account-menu-open.png'),
+  });
+  await nativeActionPage.keyboard.press('Escape');
+  await accountMenu.waitFor({ state: 'detached' });
   await nativeActionPage.screenshot({
     path: path.join(nativeComposerEvidenceDir, 'native-composer-dirty.png'),
   });
@@ -5798,6 +5887,36 @@ try {
   });
   await nativeActionPage.setViewportSize({ height: 800, width: 1280 });
 
+  await nativeComposer.getByRole('button', { name: 'Discard', exact: true }).click();
+  await nativeComposer.waitFor({ state: 'detached' });
+  await nativeActionPage.evaluate(() => {
+    const footer = document.querySelector('#topic-footer-buttons');
+    globalThis.__docodeFooterStash = footer;
+    footer.remove();
+    const composer = document.querySelector('#reply-control');
+    document.body.addEventListener('keypress', (event) => {
+      if (event.shiftKey && event.which === 82) {
+        composer.className = 'open hide-preview';
+      }
+    });
+  });
+  await runTerminalCommand(nativeActionPage, 'reply', 'Opened the native Linux DO Reply composer.');
+  await nativeComposer.waitFor();
+  await nativeActionPage.screenshot({
+    path: path.join(nativeComposerEvidenceDir, 'native-composer-shortcut-bridge.png'),
+  });
+  await nativeComposer.getByRole('button', { name: 'Discard', exact: true }).click();
+  await nativeComposer.waitFor({ state: 'detached' });
+  await nativeActionPage.evaluate(() => {
+    document.querySelector('#main-outlet')?.append(globalThis.__docodeFooterStash);
+    delete globalThis.__docodeFooterStash;
+  });
+  await runTerminalCommand(nativeActionPage, 'doctor', 'reply available via footer');
+  await nativeActionPage.getByText(/^build \d+\.\d+\.\d+/u).waitFor();
+  await runTerminalCommand(nativeActionPage, 'reply', 'Opened the native Linux DO Reply composer.');
+  await nativeComposer.waitFor();
+  await nativeComposerEditor.fill('Rejected authoritative draft');
+
   await nativeActionPage.bringToFront();
   await popupPage.reload();
   await clickPopupEnabledToggle(popupPage);
@@ -5898,7 +6017,7 @@ try {
   ]);
   assert.equal(topicMinimap.glyphCount, 36);
   assert.equal(topicMinimap.glyphFirstText, 'import LinuxDo.Topic;');
-  assert.equal(topicMinimap.glyphLastLineNumber, 37);
+  assert.equal(topicMinimap.glyphLastLineNumber, 39);
   assert.equal(topicMinimap.glyphLastText, '}');
   assert(topicMinimap.glyphTexts.includes('Ander:'));
   assert(topicMinimap.glyphTones.includes('quote'));
@@ -6832,8 +6951,8 @@ try {
       firstPostNumber: root
         .querySelector('.docode-topic-code__reply')
         ?.getAttribute('data-post-number'),
-      lastPostNumber: root
-        .querySelector('.docode-topic-code__reply:last-child')
+      lastPostNumber: Array.from(root.querySelectorAll('.docode-topic-code__reply'))
+        .at(-1)
         ?.getAttribute('data-post-number'),
       nativeRootCount: root.querySelectorAll('.docode-topic-code__content-slot > .cooked').length,
       sourceNativeRootCount: document.querySelectorAll('#main-outlet .cooked').length,
@@ -9130,9 +9249,9 @@ async function readNativeComposer(page) {
     }
     return {
       dirty: surface.getAttribute('data-dirty'),
-      editorFontFamilyIncludesMono: getComputedStyle(editor)
+      editorUsesWorkbenchUiFont: getComputedStyle(editor)
         .fontFamily.toLowerCase()
-        .includes('mono'),
+        .includes('segoe ui'),
       exactNativeRootCount: root.querySelectorAll('.docode-native-composer__host > #reply-control')
         .length,
       nativeRootInSource: Boolean(
@@ -10503,7 +10622,7 @@ function authenticatedTopicFixtureHtml() {
     </style>
   </head>
   <body>
-    <header class="d-header"><div id="current-user" data-username="fixture-user"></div></header>
+    <header class="d-header"><div id="current-user" data-username="fixture-user"><span class="badge-notification unread-notifications">3</span></div></header>
     <main id="main-outlet">
       <h1 data-topic-id="43"><a class="fancy-title" href="/t/synthetic-native-actions/43">Native actions</a></h1>
       <div class="post-stream"><div data-post-number="1">

@@ -247,7 +247,7 @@ describe('TopicCodeEditorSurface', () => {
         view.container.querySelectorAll<HTMLElement>('[data-docode-line-number]'),
         (element) => Number(element.dataset.docodeLineNumber),
       ),
-    ).toEqual([8, 9, 10, 11, 12, 16, 17]);
+    ).toEqual([8, 9, 10, 11, 12, 17, 18]);
     const sourceImage = nativeRoots[0]?.querySelector<HTMLImageElement>('img');
     const imageTrigger = view.container.querySelector<HTMLElement>('[data-docode-image-trigger]');
     const imagePreview = view.container.querySelector<HTMLElement>('[data-docode-image-preview]');
@@ -550,12 +550,12 @@ describe('TopicCodeEditorSurface', () => {
     expect(reference.textContent).toBe('return #1 · @alice;');
     expect(
       reference.closest('[data-docode-editor-line]')?.getAttribute('data-docode-editor-line'),
-    ).toBe('18');
+    ).toBe('19');
     expect(
       view.container
         .querySelector('[data-post-number="2"] .docode-topic-code__reply-close')
         ?.getAttribute('data-docode-editor-line'),
-    ).toBe('19');
+    ).toBe('20');
 
     fireEvent.pointerEnter(reference);
     const hover = within(document.body).getByRole('tooltip');

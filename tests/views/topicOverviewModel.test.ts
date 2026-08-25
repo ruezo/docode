@@ -92,8 +92,8 @@ describe('createTopicOverviewModels', () => {
       requestedPostNumber: 2,
       scope: 'loaded-window',
     });
-    expect(models.minimap.lineCount).toBe(17);
-    expect(models.minimap.points.map(({ position }) => position)).toEqual([5 / 16, 12 / 16]);
+    expect(models.minimap.lineCount).toBe(19);
+    expect(models.minimap.points.map(({ position }) => position)).toEqual([5 / 18, 13 / 18]);
     expect(models.minimap.lines[0]?.tokens.map(({ text }) => text).join('')).toBe(
       'import LinuxDo.Topic;',
     );
@@ -123,7 +123,7 @@ describe('createTopicOverviewModels', () => {
         line.tokens.some(({ text, tone }) => text === 'Reliable heading' && tone === 'heading'),
       ),
     ).toBe(true);
-    expect(models.minimap.lines.at(-1)).toMatchObject({ lineNumber: 17, position: 1 });
+    expect(models.minimap.lines.at(-1)).toMatchObject({ lineNumber: 19, position: 1 });
     expect(
       models.minimap.lines
         .at(-1)
@@ -237,13 +237,13 @@ describe('createTopicOverviewModels', () => {
     expect(models.outline.entries).toHaveLength(1_000);
     expect(models.outline.entries.every(({ headings }) => headings.length === 0)).toBe(true);
     expect(models.minimap.points).toHaveLength(1_000);
-    expect(models.minimap.lineCount).toBe(4_006);
+    expect(models.minimap.lineCount).toBe(5_006);
     expect(models.minimap.lines.length).toBeLessThanOrEqual(800);
     expect(models.minimap.lines[0]?.lineNumber).toBe(1);
-    expect(models.minimap.lines.at(-1)?.lineNumber).toBe(4_006);
-    expect(models.minimap.points[0]?.position).toBeCloseTo(5 / 4_005);
-    expect(models.minimap.points[500]?.position).toBeCloseTo(2_005 / 4_005);
-    expect(models.minimap.points.at(-1)?.position).toBeCloseTo(4_001 / 4_005);
+    expect(models.minimap.lines.at(-1)?.lineNumber).toBe(5_006);
+    expect(models.minimap.points[0]?.position).toBeCloseTo(5 / 5_005);
+    expect(models.minimap.points[500]?.position).toBeCloseTo(2_505 / 5_005);
+    expect(models.minimap.points.at(-1)?.position).toBeCloseTo(5_000 / 5_005);
     expect(models.minimap.range).toMatchObject({
       after: 'loading',
       before: 'not-loaded',
@@ -303,20 +303,20 @@ describe('createTopicOverviewModels', () => {
       source: 'focus',
     });
 
-    expect(initialModels.minimap.lineCount).toBe(14);
-    expect(initialModels.minimap.points.map(({ position }) => position)).toEqual([5 / 13, 9 / 13]);
-    expect(expandedModels.minimap.lineCount).toBe(18);
+    expect(initialModels.minimap.lineCount).toBe(16);
+    expect(initialModels.minimap.points.map(({ position }) => position)).toEqual([5 / 15, 10 / 15]);
+    expect(expandedModels.minimap.lineCount).toBe(21);
     expect(expandedModels.minimap.points.map(({ position }) => position)).toEqual([
-      5 / 17,
-      9 / 17,
-      13 / 17,
+      5 / 20,
+      10 / 20,
+      15 / 20,
     ]);
     expect(expandedModels.outline.entries[1]?.markers).toContain('current');
     expect(changedModels.outline.topic?.id).toBe(43);
     expect(changedModels.outline.entries.map(({ id }) => id)).toEqual(['post:300']);
     expect(changedModels.outline.currentPosition).toBeNull();
     expect(changedModels.minimap.points[0]?.markers).toEqual(['original-post']);
-    expect(changedModels.minimap.points[0]?.position).toBe(5 / 9);
+    expect(changedModels.minimap.points[0]?.position).toBe(5 / 10);
   });
 
   it('repositions current reply markers without rebuilding static outline or minimap content', () => {

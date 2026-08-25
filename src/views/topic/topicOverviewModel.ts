@@ -337,7 +337,12 @@ function createMinimapLines(
           layout.contentStart + index,
           reply.id,
           summary.indent + 2,
-          [token(summary.kind === 'text' ? 'string' : summary.kind, summary.text)],
+          [
+            token(
+              summary.kind === 'text' || summary.kind === 'blank' ? 'string' : summary.kind,
+              summary.text,
+            ),
+          ],
         ),
       );
     });
@@ -406,7 +411,7 @@ function createDocMinimapLines(
           layout.contentStart + index,
           reply.id,
           summary.indent,
-          [token(summary.kind === 'text' ? 'text' : summary.kind, summary.text)],
+          [token(summary.kind === 'blank' ? 'text' : summary.kind, summary.text)],
         ),
       );
     });

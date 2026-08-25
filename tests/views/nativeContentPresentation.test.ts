@@ -47,6 +47,34 @@ describe('nativeContentPresentation', () => {
     ]);
   });
 
+  it('classifies empty paragraphs as blank and image-only paragraphs as media', () => {
+    const root = document.createElement('div');
+    root.className = 'cooked';
+    root.innerHTML = `<p></p>
+      <p><a class="lightbox" href="/i.png"><img src="/i.png" alt="se_blast"></a></p>
+      <p>想起了这个游戏</p>
+      <p><img class="emoji" src="/e.png" alt=":smile:"></p>`;
+    const [blank, imageOnly, text, emojiOnly] = Array.from(root.children) as HTMLElement[];
+    if (!blank || !imageOnly || !text || !emojiOnly) throw new Error('Missing block fixtures.');
+    const content: NativePostContent = {
+      blocks: [
+        { element: blank, kind: 'paragraph' },
+        { element: imageOnly, kind: 'media' },
+        { element: text, kind: 'paragraph' },
+        { element: emojiOnly, kind: 'paragraph' },
+      ],
+      root,
+      source: 'linuxdo-owned-dom',
+    };
+
+    expect(summarizeNativeContentLines(content).map(({ kind }) => kind)).toEqual([
+      'blank',
+      'media',
+      'text',
+      'text',
+    ]);
+  });
+
   it('counts explicit native hard breaks as visible editor lines', () => {
     const root = document.createElement('div');
     root.className = 'cooked';
