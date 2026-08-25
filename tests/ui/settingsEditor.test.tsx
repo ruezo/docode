@@ -75,6 +75,32 @@ describe('Settings editor', () => {
     });
   });
 
+  it('commits a valid Browse History Limit and reverts out-of-range input', () => {
+    const onChange = vi.fn();
+    render(
+      <SettingsEditor
+        onChange={onChange}
+        preference={DEFAULT_WORKBENCH_APPEARANCE}
+        resolvedTheme="dark"
+      />,
+    );
+
+    const limit = screen.getByLabelText<HTMLInputElement>('Browse History Limit');
+    expect(limit.value).toBe('100');
+
+    fireEvent.change(limit, { target: { value: '0' } });
+    fireEvent.blur(limit);
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...DEFAULT_WORKBENCH_APPEARANCE,
+      historyLimit: 0,
+    });
+
+    fireEvent.change(limit, { target: { value: '5000' } });
+    fireEvent.blur(limit);
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(limit.value).toBe('100');
+  });
+
   it('collapses and expands the table of contents group', () => {
     render(
       <SettingsEditor

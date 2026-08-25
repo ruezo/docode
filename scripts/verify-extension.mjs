@@ -329,6 +329,53 @@ try {
       status: 200,
     }),
   );
+  await context.route('https://linux.do/categories.json', (route) =>
+    route.fulfill({
+      body: JSON.stringify({
+        category_list: {
+          categories: [
+            {
+              color: '0088CC',
+              description_text: '开发调优相关讨论',
+              id: 4,
+              name: '开发调优',
+              slug: 'develop',
+              topic_count: 128,
+            },
+            { color: 'AA33CC', id: 14, name: '资源荟萃', slug: 'resource', topic_count: 52 },
+            { color: '12A89D', id: 32, name: '前沿快讯', slug: 'news', topic_count: 7 },
+            {
+              color: 'FFFFFF',
+              id: 40,
+              name: 'Nested child',
+              parent_category_id: 4,
+              slug: 'child',
+              topic_count: 3,
+            },
+          ],
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    }),
+  );
+  await context.route('https://linux.do/tags.json', (route) =>
+    route.fulfill({
+      body: JSON.stringify({
+        tags: [
+          { count: 90, id: 'ai', text: 'ai' },
+          { count: 80, id: '福利', text: '福利' },
+          ...Array.from({ length: 12 }, (unused, index) => ({
+            count: 70 - index,
+            id: `fixture-tag-${String(index + 1)}`,
+            text: `fixture-tag-${String(index + 1)}`,
+          })),
+        ],
+      }),
+      contentType: 'application/json',
+      status: 200,
+    }),
+  );
   await context.route(unreadTopicListFixtureUrl, (route) =>
     route.fulfill({
       body: topicListFixtureHtml({ firstUnreadPostNumber: 4 }),
@@ -610,7 +657,9 @@ try {
   await topicListFixturePage.evaluate(() => document.fonts.ready);
   assert.deepEqual(await readTransientWorkbenchErrors(topicListFixturePage), []);
   const explorerRouteFiles = await topicListFixturePage
-    .locator('.docode-workbench__explorer-list[role="tree"] [role="treeitem"]')
+    .locator(
+      '.docode-workbench__explorer-list[aria-label="Linux DO list routes"] [role="treeitem"]',
+    )
     .evaluateAll((rows) =>
       rows.map((row) => {
         const icon = row.querySelector('[data-file-extension]');
@@ -709,6 +758,117 @@ try {
   await topicListFixturePage.screenshot({
     path: path.join(explorerSetiIconEvidenceDir, 'explorer-seti-file-icons.png'),
   });
+  await topicListFixturePage
+    .locator('[aria-label="Linux DO categories"] [role="treeitem"]')
+    .first()
+    .waitFor();
+  const explorerCategoryRows = await topicListFixturePage
+    .locator('[aria-label="Linux DO categories"] [role="treeitem"]')
+    .evaluateAll((rows) =>
+      rows.map((row) => {
+        const icon = row.querySelector('[data-file-extension]');
+        const label = row.querySelector('.docode-workbench__explorer-label');
+        if (!(icon instanceof HTMLElement) || !(label instanceof HTMLElement)) {
+          throw new Error('Explorer category row is missing its typed icon or label.');
+        }
+        return {
+          accessibleName: row.getAttribute('aria-label'),
+          count:
+            row.querySelector('.docode-workbench__explorer-category-count')?.textContent ?? null,
+          extension: icon.dataset.fileExtension,
+          iconColor: getComputedStyle(icon).color,
+          iconFont: getComputedStyle(icon).fontFamily,
+          label: label.textContent?.trim(),
+          setiId: icon.dataset.setiIcon,
+          title: row.getAttribute('title'),
+          tooltip: row.getAttribute('data-docode-tooltip'),
+        };
+      }),
+    );
+  assert.deepEqual(explorerCategoryRows, [
+    {
+      accessibleName: '开发调优',
+      count: '128',
+      extension: 'png',
+      iconColor: 'rgb(160, 116, 196)',
+      iconFont: 'docode-seti, sans-serif',
+      label: 'develop.png',
+      setiId: '_image',
+      title: null,
+      tooltip: '开发调优 — 开发调优相关讨论',
+    },
+    {
+      accessibleName: '资源荟萃',
+      count: '52',
+      extension: 'csv',
+      iconColor: 'rgb(141, 193, 73)',
+      iconFont: 'docode-seti, sans-serif',
+      label: 'resource.csv',
+      setiId: '_csv',
+      title: null,
+      tooltip: '资源荟萃',
+    },
+    {
+      accessibleName: '前沿快讯',
+      count: '7',
+      extension: 'txt',
+      iconColor: 'rgb(212, 215, 214)',
+      iconFont: 'docode-seti, sans-serif',
+      label: 'news.txt',
+      setiId: '_default',
+      title: null,
+      tooltip: '前沿快讯',
+    },
+  ]);
+  await topicListFixturePage.screenshot({
+    path: path.join(explorerSetiIconEvidenceDir, 'explorer-category-lists.png'),
+  });
+
+  await topicListFixturePage.getByRole('button', { name: 'Filter topics by tag' }).click();
+  const tagPicker = topicListFixturePage.getByRole('dialog', { name: 'Filter by Tag' });
+  await tagPicker.waitFor();
+  await tagPicker.getByRole('option', { name: /View all tags/u }).waitFor();
+  assert.equal(await tagPicker.getByRole('option').count(), 13);
+  assert.deepEqual((await tagPicker.getByRole('option').allTextContents()).slice(0, 2), [
+    'ai90 topics',
+    '福利80 topics',
+  ]);
+  await topicListFixturePage.screenshot({
+    path: path.join(explorerSetiIconEvidenceDir, 'tag-quick-pick-featured.png'),
+  });
+  await tagPicker.getByRole('option', { name: /View all tags/u }).click();
+  await topicListFixturePage.waitForFunction(
+    () => document.querySelectorAll('.docode-quick-open__item').length === 14,
+  );
+  await tagPicker.getByRole('combobox', { name: 'Filter Linux DO tags' }).fill('fixture-tag-12');
+  await topicListFixturePage.waitForFunction(
+    () => document.querySelectorAll('.docode-quick-open__item').length === 1,
+  );
+  assert.deepEqual(await tagPicker.getByRole('option').allTextContents(), [
+    'fixture-tag-1259 topics',
+  ]);
+  await topicListFixturePage.keyboard.press('Escape');
+  await tagPicker.waitFor({ state: 'detached' });
+
+  await topicListFixturePage.getByRole('button', { name: 'Source Control Browse History' }).click();
+  await topicListFixturePage.getByRole('heading', { name: 'SOURCE CONTROL' }).waitFor();
+  const activeHistoryRow = topicListFixturePage.locator(
+    '.docode-workbench__history-row[data-active="true"]',
+  );
+  await activeHistoryRow.waitFor();
+  assert.match((await activeHistoryRow.textContent()) ?? '', /Latest topics/u);
+  assert.equal(await activeHistoryRow.locator('.docode-workbench__history-dot').count(), 1);
+  assert.equal(
+    await activeHistoryRow.locator('.docode-workbench__history-main').getAttribute('aria-current'),
+    'page',
+  );
+  await topicListFixturePage.screenshot({
+    path: path.join(explorerSetiIconEvidenceDir, 'browse-history-graph.png'),
+  });
+  await topicListFixturePage.getByRole('button', { name: 'Clear Browse History' }).click();
+  await topicListFixturePage.getByText(/No browse history yet/u).waitFor();
+  await topicListFixturePage.getByRole('button', { name: 'Explorer' }).click();
+  await topicListFixturePage.getByRole('heading', { name: 'DOCODE' }).waitFor();
   const appearanceSettingsPage = await context.newPage();
   await observeTransientWorkbenchErrors(appearanceSettingsPage);
   await appearanceSettingsPage.goto(topicListFixtureUrl, { waitUntil: 'domcontentloaded' });
@@ -716,7 +876,13 @@ try {
   await appearanceSettingsPage.getByRole('list', { name: 'Topic list document' }).waitFor();
   await appearanceSettingsPage.getByRole('button', { name: 'Settings', exact: true }).click();
   await appearanceSettingsPage.getByRole('heading', { level: 1, name: 'Settings' }).waitFor();
-  assert.equal(await appearanceSettingsPage.locator('.docode-settings__row').count(), 5);
+  assert.equal(await appearanceSettingsPage.locator('.docode-settings__row').count(), 6);
+  assert.equal(
+    await appearanceSettingsPage
+      .getByRole('spinbutton', { name: 'Browse History Limit' })
+      .inputValue(),
+    '100',
+  );
   assert.equal(
     await appearanceSettingsPage
       .getByRole('combobox', { name: 'DOCode Appearance Color Theme' })
@@ -3837,8 +4003,24 @@ try {
   );
   assert(
     Object.keys(approvedStoredState).every((key) =>
-      ['enabled', 'workbench.appearance', 'workbench.sidebarWidth'].includes(key),
+      [
+        'enabled',
+        'workbench.appearance',
+        'workbench.browseHistory',
+        'workbench.sidebarWidth',
+      ].includes(key),
     ),
+  );
+  assert(
+    !('workbench.browseHistory' in approvedStoredState) ||
+      (Array.isArray(approvedStoredState['workbench.browseHistory']) &&
+        approvedStoredState['workbench.browseHistory'].every(
+          (entry) =>
+            typeof entry?.path === 'string' &&
+            entry.path.startsWith('/') &&
+            typeof entry.title === 'string' &&
+            Number.isFinite(entry.visitedAt),
+        )),
   );
   assert(!('enabled' in approvedStoredState) || approvedStoredState.enabled === true);
   assert(
@@ -4488,12 +4670,16 @@ try {
   await assertRuntimeOwnership(topicFixturePage, true);
   await topicFixturePage.locator('.docode-workbench__editor').waitFor();
   await topicFixturePage
-    .locator('.docode-workbench__explorer-list[role="tree"] [role="treeitem"]')
+    .locator(
+      '.docode-workbench__explorer-list[aria-label="Linux DO list routes"] [role="treeitem"]',
+    )
     .first()
     .waitFor();
   assert.equal(
     await topicFixturePage
-      .locator('.docode-workbench__explorer-list[role="tree"] [role="treeitem"]')
+      .locator(
+        '.docode-workbench__explorer-list[aria-label="Linux DO list routes"] [role="treeitem"]',
+      )
       .count(),
     5,
   );
@@ -5322,7 +5508,7 @@ try {
   const pointerPostMenu = nativeActionPage.getByRole('menu', { name: 'Post 1 actions menu' });
   await pointerPostMenu.waitFor();
   assert.deepEqual(await pointerPostMenu.getByRole('menuitem').allTextContents(), [
-    'Reply to Topic',
+    'Reply to Post 1',
     'Like',
     'Bookmark',
     'Copy Post Link',
@@ -5368,7 +5554,8 @@ try {
   await nativeActionPage.waitForFunction(() => {
     const active = document.activeElement;
     return (
-      active?.getAttribute('role') === 'menuitem' && active.textContent?.trim() === 'Reply to Topic'
+      active?.getAttribute('role') === 'menuitem' &&
+      active.textContent?.trim() === 'Reply to Post 1'
     );
   });
   await nativeActionPage.keyboard.press('ArrowDown');
@@ -5907,6 +6094,60 @@ try {
   });
   await nativeComposer.getByRole('button', { name: 'Discard', exact: true }).click();
   await nativeComposer.waitFor({ state: 'detached' });
+  await nativeActionPage.evaluate(() => {
+    const composer = document.querySelector('#reply-control');
+    const opens = [];
+    globalThis.__docodePostReplyOpens = opens;
+    const topic = {
+      draft_key: 'topic_43',
+      draft_sequence: 5,
+      id: 43,
+      postStream: {
+        findPostsByIds: (postIds) =>
+          Promise.resolve(postIds.map((postId) => ({ id: postId, post_number: 2 }))),
+        posts: [],
+      },
+    };
+    globalThis.Discourse = {
+      __container__: {
+        lookup(name) {
+          if (name === 'controller:topic') return { model: topic };
+          if (name !== 'service:composer') return null;
+          return {
+            open(options) {
+              opens.push({
+                action: options.action,
+                draftKey: options.draftKey,
+                draftSequence: options.draftSequence,
+                postNumber: options.post ? options.post.post_number : null,
+                topicId: options.topic ? options.topic.id : null,
+              });
+              composer.className = 'open hide-preview';
+              return Promise.resolve();
+            },
+          };
+        },
+      },
+    };
+  });
+  await runTerminalCommand(
+    nativeActionPage,
+    'reply 2',
+    'Opened the native Linux DO Reply composer.',
+  );
+  await nativeComposer.waitFor();
+  assert.deepEqual(await nativeActionPage.evaluate(() => globalThis.__docodePostReplyOpens), [
+    { action: 'reply', draftKey: 'topic_43', draftSequence: 5, postNumber: 2, topicId: 43 },
+  ]);
+  await nativeActionPage.screenshot({
+    path: path.join(nativeComposerEvidenceDir, 'native-composer-post-bridge.png'),
+  });
+  await nativeComposer.getByRole('button', { name: 'Discard', exact: true }).click();
+  await nativeComposer.waitFor({ state: 'detached' });
+  await nativeActionPage.evaluate(() => {
+    delete globalThis.Discourse;
+    delete globalThis.__docodePostReplyOpens;
+  });
   await nativeActionPage.evaluate(() => {
     document.querySelector('#main-outlet')?.append(globalThis.__docodeFooterStash);
     delete globalThis.__docodeFooterStash;
@@ -8963,7 +9204,7 @@ async function readFullWorkbenchChrome(page, editorLineSelector) {
       commandCenterHeight: readRect('.docode-workbench__command-center').height,
       editorLineHeight: readRect(lineSelector).height,
       explorerRouteCount: root.querySelectorAll(
-        '.docode-workbench__explorer-list[role="tree"] [role="treeitem"]',
+        '.docode-workbench__explorer-list[aria-label="Linux DO list routes"] [role="treeitem"]',
       ).length,
       sidebarWidth: readRect('.docode-workbench__sidebar').width,
       statusBarHeight: readRect('.docode-workbench__statusbar').height,

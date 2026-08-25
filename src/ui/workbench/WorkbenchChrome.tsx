@@ -318,6 +318,7 @@ function EditorTab({
     <div
       className="docode-workbench__tab"
       data-active={active ? 'true' : 'false'}
+      data-closable={closeFallback ? 'true' : 'false'}
       data-dirty={view.dirty ? 'true' : undefined}
       data-read-state={view.readState}
       data-view-id={view.id}

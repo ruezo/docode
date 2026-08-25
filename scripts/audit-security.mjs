@@ -136,10 +136,28 @@ assert.deepEqual(
     'src/linuxdo/notificationsLoader.ts',
     'src/linuxdo/postActionApiClient.ts',
     'src/linuxdo/searchAdapter.ts',
+    'src/linuxdo/taxonomyLoader.ts',
     'src/linuxdo/topicListPaginator.ts',
     'src/linuxdo/topicPaginator.ts',
   ],
-  'Only the reviewed same-origin Linux DO Explorer, Search, notifications, and pagination adapters may initiate network requests.',
+  'Only the reviewed same-origin Linux DO Explorer, Search, notifications, taxonomy, and pagination adapters may initiate network requests.',
+);
+const taxonomySource =
+  sourceText.get(path.join(projectRoot, 'src/linuxdo/taxonomyLoader.ts')) ?? '';
+assert.match(
+  taxonomySource,
+  /credentials:\s*'same-origin'/u,
+  'The taxonomy loader must keep same-origin credentials.',
+);
+assert.match(
+  taxonomySource,
+  /responseUrl\.origin\s*!==\s*origin/u,
+  'The taxonomy loader must reject cross-origin responses.',
+);
+assert.match(
+  taxonomySource,
+  /pathname:\s*'\/categories\.json'\s*\|\s*'\/tags\.json'/u,
+  'The taxonomy loader must stay confined to the reviewed category and tag endpoints.',
 );
 const notificationsSource =
   sourceText.get(path.join(projectRoot, 'src/linuxdo/notificationsLoader.ts')) ?? '';
@@ -252,11 +270,24 @@ const storageFiles = matchingFiles(sourceText, /wxt\/utils\/storage/u);
 assert.deepEqual(
   storageFiles,
   [
+    'src/settings/browseHistoryStore.ts',
     'src/settings/enabledPreference.ts',
     'src/settings/workbenchAppearancePreference.ts',
     'src/settings/workbenchLayoutPreference.ts',
   ],
   'Extension storage must remain confined to the reviewed preference modules.',
+);
+const browseHistoryStorageSource =
+  sourceText.get(path.join(projectRoot, 'src/settings/browseHistoryStore.ts')) ?? '';
+assert.match(
+  browseHistoryStorageSource,
+  /'local:workbench\.browseHistory'/u,
+  'The browse history store must use its reviewed key.',
+);
+assert.doesNotMatch(
+  browseHistoryStorageSource,
+  /fetch|XMLHttpRequest/u,
+  'The browse history store must stay offline.',
 );
 const enabledStorageSource =
   sourceText.get(path.join(projectRoot, 'src/settings/enabledPreference.ts')) ?? '';

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { MAXIMUM_BROWSE_HISTORY_LIMIT } from '../../settings/browseHistoryStore';
 import {
   DEFAULT_WORKBENCH_APPEARANCE,
   type WorkbenchAppearancePreference,
@@ -32,6 +33,8 @@ interface SelectOption {
 
 const SETTING_SEARCH_TEXT: Readonly<Record<AppearanceKey, string>> = {
   commandCenterLabel: 'workbench command center label title bar search text docode',
+  historyLimit:
+    'workbench browse history limit source control graph records visited topics maximum disable',
   showTopicAvatars: 'editor topic detail post body avatar author profile image',
   theme: 'workbench appearance color theme dark light system operating system',
   topicDetailBodyColor: 'editor topic detail post body foreground font color',
@@ -276,27 +279,50 @@ export function SettingsEditor({ onChange, preference, resolvedTheme }: Settings
               ) : null}
             </section>
           ) : null}
-          {visibleKeys.has('commandCenterLabel') ? (
+          {hasAny(visibleKeys, ['commandCenterLabel', 'historyLimit']) ? (
             <section className="docode-settings__group" ref={workbenchGroup}>
               <h2>Workbench</h2>
-              <SettingRow
-                description="Controls the text displayed in the title bar Command Center when Quick Open is closed."
-                modified={
-                  preference.commandCenterLabel !== DEFAULT_WORKBENCH_APPEARANCE.commandCenterLabel
-                }
-                onReset={() => {
-                  reset('commandCenterLabel');
-                }}
-                title="DOCode › Workbench: Command Center Label"
-              >
-                <TextControl
-                  label="Command Center Label"
-                  onChange={(value) => {
-                    update('commandCenterLabel', value);
+              {visibleKeys.has('commandCenterLabel') ? (
+                <SettingRow
+                  description="Controls the text displayed in the title bar Command Center when Quick Open is closed."
+                  modified={
+                    preference.commandCenterLabel !==
+                    DEFAULT_WORKBENCH_APPEARANCE.commandCenterLabel
+                  }
+                  onReset={() => {
+                    reset('commandCenterLabel');
                   }}
-                  value={preference.commandCenterLabel}
-                />
-              </SettingRow>
+                  title="DOCode › Workbench: Command Center Label"
+                >
+                  <TextControl
+                    label="Command Center Label"
+                    onChange={(value) => {
+                      update('commandCenterLabel', value);
+                    }}
+                    value={preference.commandCenterLabel}
+                  />
+                </SettingRow>
+              ) : null}
+              {visibleKeys.has('historyLimit') ? (
+                <SettingRow
+                  description="Controls how many visited Linux DO views the Source Control history keeps on this device. Set to 0 to turn browse history off. Maximum 1000."
+                  modified={preference.historyLimit !== DEFAULT_WORKBENCH_APPEARANCE.historyLimit}
+                  onReset={() => {
+                    reset('historyLimit');
+                  }}
+                  title="DOCode › Workbench: Browse History Limit"
+                >
+                  <NumberControl
+                    label="Browse History Limit"
+                    maximum={MAXIMUM_BROWSE_HISTORY_LIMIT}
+                    minimum={0}
+                    onChange={(value) => {
+                      update('historyLimit', value);
+                    }}
+                    value={preference.historyLimit}
+                  />
+                </SettingRow>
+              ) : null}
             </section>
           ) : null}
         </div>
@@ -547,6 +573,46 @@ function TextControl({
       }}
       spellCheck={false}
       type="text"
+    />
+  );
+}
+
+function NumberControl({
+  label,
+  maximum,
+  minimum,
+  onChange,
+  value,
+}: {
+  readonly label: string;
+  readonly maximum: number;
+  readonly minimum: number;
+  readonly onChange: (value: number) => void;
+  readonly value: number;
+}) {
+  return (
+    <input
+      aria-label={label}
+      defaultValue={String(value)}
+      inputMode="numeric"
+      key={value}
+      max={maximum}
+      min={minimum}
+      onBlur={(event) => {
+        const parsed = Number.parseInt(event.currentTarget.value.trim(), 10);
+        if (Number.isInteger(parsed) && parsed >= minimum && parsed <= maximum) onChange(parsed);
+        else event.currentTarget.value = String(value);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.currentTarget.blur();
+        } else if (event.key === 'Escape') {
+          event.currentTarget.value = String(value);
+          event.currentTarget.blur();
+        }
+      }}
+      spellCheck={false}
+      type="number"
     />
   );
 }

@@ -15,12 +15,15 @@ import {
 import { LinuxDoSearchAdapter } from '../../linuxdo/searchAdapter';
 import { LinuxDoExplorerTopicLoader } from '../../linuxdo/explorerTopicLoader';
 import { LinuxDoNotificationsLoader } from '../../linuxdo/notificationsLoader';
+import { LinuxDoTaxonomyLoader } from '../../linuxdo/taxonomyLoader';
+import { installWorkbenchSpaNavigation } from '../../linuxdo/spaNavigation';
 import { LinuxDoTopicListPaginator } from '../../linuxdo/topicListPaginator';
 import { LinuxDoTopicPaginator } from '../../linuxdo/topicPaginator';
 import {
   detectLinuxDoCurrentUser,
   detectLinuxDoUnreadNotifications,
 } from '../../linuxdo/capabilities';
+import { createBrowseHistoryStore } from '../../settings/browseHistoryStore';
 import type { WorkbenchAppearancePreference } from '../../settings/workbenchAppearancePreference';
 import { extractTopic, type TopicExtraction } from '../../linuxdo/topicAdapter';
 import { WorkbenchNavigationCoordinator } from '../../navigation/navigationCoordinator';
@@ -95,6 +98,7 @@ export function mountWorkbench(
   const element = document.createElement('div');
   element.setAttribute(WORKBENCH_ROOT_MARKER, ownerToken);
   document.body.append(element);
+  const removeSpaNavigation = installWorkbenchSpaNavigation(document, element);
   let root: Root | null = createRoot(element);
   const navigation = new WorkbenchNavigationCoordinator(initialRoute);
   const commandNavigation = new LinuxDoNavigationAdapter(document, element, initialRoute);
@@ -104,6 +108,8 @@ export function mountWorkbench(
   const search = new LinuxDoSearchAdapter(document);
   const explorerTopics = new LinuxDoExplorerTopicLoader(document);
   const notificationsLoader = new LinuxDoNotificationsLoader(document);
+  const taxonomyLoader = new LinuxDoTaxonomyLoader(document);
+  const browseHistory = createBrowseHistoryStore();
   const topicListPaginator = new LinuxDoTopicListPaginator(document);
   const nativeContentTransfer = new NativeContentTransfer(document);
   const resolveNativeContent = (sourceOwner: HTMLElement): HTMLElement | null =>
@@ -285,6 +291,12 @@ export function mountWorkbench(
         onCopyText={copyText}
         onLoadExplorerTopics={loadExplorerTopics}
         onLoadNotifications={(signal) => notificationsLoader.load(signal)}
+        onLoadCategories={(signal) => taxonomyLoader.loadCategories(signal)}
+        onLoadTags={(signal) => taxonomyLoader.loadTags(signal)}
+        onLoadHistory={() => browseHistory.read()}
+        onRecordHistory={(input, limit) => browseHistory.record(input, limit)}
+        onRemoveHistoryEntry={(viewId) => browseHistory.remove(viewId)}
+        onClearHistory={() => browseHistory.clear()}
         onLoadTopicList={loadTopicList}
         onLoadMoreTopics={(route, loadedTopicIds, signal) =>
           topicListPaginator.loadNext(route, loadedTopicIds, signal)
@@ -391,6 +403,7 @@ export function mountWorkbench(
       topicPaginator.dispose();
       cancelRouteSettle();
       nativeContentTransfer.dispose();
+      removeSpaNavigation();
       if (element.getAttribute(WORKBENCH_ROOT_MARKER) === ownerToken) element.remove();
       return true;
     },

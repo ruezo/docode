@@ -2,23 +2,29 @@ import { useState, type ReactNode } from 'react';
 
 import {
   getLinuxDoTopicListRouteFiles,
+  recognizeLinuxDoRoute,
   type LinuxDoRoute,
   type LinuxDoTopicListRouteFile,
 } from '../../linuxdo/routes';
 import type { LinuxDoSearchResult } from '../../linuxdo/searchAdapter';
+import type { LinuxDoCategoryItem } from '../../linuxdo/taxonomyLoader';
 import type { OpenViewState } from '../../navigation/openViewState';
 import { Codicon } from '../icons/codicon';
 import { WorkbenchFileIcon } from './WorkbenchFileIcon';
 import { createWorkbenchViewContext, type WorkbenchViewContext } from './workbenchContext';
-import { createWorkbenchVirtualFile } from './workbenchFileType';
+import {
+  createWorkbenchDocumentVirtualFile,
+  createWorkbenchVirtualFile,
+} from './workbenchFileType';
 
 interface WorkbenchExplorerProps {
+  readonly categories: readonly LinuxDoCategoryItem[] | null;
   readonly context: WorkbenchViewContext;
   readonly navigationState: OpenViewState;
   readonly onClearSearch: () => void;
   readonly onCloseView: (viewId: string) => void;
   readonly onNavigateRoute: (route: LinuxDoRoute) => void;
-  readonly onOpenQuickOpen: () => void;
+  readonly onOpenTagFilter: () => void;
   readonly onRefresh: () => void;
   readonly searchSession: {
     readonly items: readonly LinuxDoSearchResult[];
@@ -27,18 +33,20 @@ interface WorkbenchExplorerProps {
 }
 
 export function WorkbenchExplorer({
+  categories,
   context,
   navigationState,
   onClearSearch,
   onCloseView,
   onNavigateRoute,
-  onOpenQuickOpen,
+  onOpenTagFilter,
   onRefresh,
   searchSession,
 }: WorkbenchExplorerProps) {
   const [openEditorsExpanded, setOpenEditorsExpanded] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(true);
   const [routesExpanded, setRoutesExpanded] = useState(true);
+  const [categoriesExpanded, setCategoriesExpanded] = useState(true);
   const routeFiles = getLinuxDoTopicListRouteFiles();
 
   return (
@@ -47,9 +55,9 @@ export function WorkbenchExplorer({
         <h2>DOCODE</h2>
         <div className="docode-workbench__sidebar-actions">
           <button
-            aria-label="Search topics"
-            data-docode-tooltip="Search topics"
-            onClick={onOpenQuickOpen}
+            aria-label="Filter topics by tag"
+            data-docode-tooltip="Filter by Tag"
+            onClick={onOpenTagFilter}
             type="button"
           >
             <Codicon name="search" />
@@ -163,6 +171,37 @@ export function WorkbenchExplorer({
                 onNavigate={onNavigateRoute}
               />
             ))}
+          </div>
+        </ExplorerSection>
+        <ExplorerSection
+          count={categories?.length ?? 0}
+          expanded={categoriesExpanded}
+          label="Category Lists"
+          onToggle={() => {
+            setCategoriesExpanded((current) => !current);
+          }}
+        >
+          <div
+            aria-label="Linux DO categories"
+            className="docode-workbench__explorer-list"
+            role="tree"
+          >
+            {(categories ?? []).map((category) => (
+              <ExplorerCategoryFile
+                active={isActiveCategory(context.route, category)}
+                category={category}
+                key={category.id}
+                onNavigate={onNavigateRoute}
+              />
+            ))}
+            {categories === null ? (
+              <p className="docode-workbench__explorer-empty">Loading Linux DO categories…</p>
+            ) : null}
+            {categories?.length === 0 ? (
+              <p className="docode-workbench__explorer-empty">
+                Linux DO categories are unavailable.
+              </p>
+            ) : null}
           </div>
         </ExplorerSection>
       </div>
@@ -285,6 +324,54 @@ function ExplorerRouteFile({
   );
 }
 
+function ExplorerCategoryFile({
+  active,
+  category,
+  onNavigate,
+}: {
+  readonly active: boolean;
+  readonly category: LinuxDoCategoryItem;
+  readonly onNavigate: (route: LinuxDoRoute) => void;
+}) {
+  const virtualFile = createWorkbenchDocumentVirtualFile(
+    category.slug,
+    `category:${category.slug}`,
+  );
+  return (
+    <button
+      aria-current={active ? 'page' : undefined}
+      aria-level={1}
+      aria-label={category.name}
+      className="docode-workbench__explorer-row docode-workbench__explorer-row--route docode-workbench__explorer-row--category"
+      data-active={active ? 'true' : undefined}
+      data-category-id={category.id}
+      data-docode-tooltip={
+        category.description ? `${category.name} — ${category.description}` : category.name
+      }
+      onClick={() => {
+        onNavigate(recognizeLinuxDoRoute(category.url));
+      }}
+      role="treeitem"
+      type="button"
+    >
+      <span className="docode-workbench__explorer-indent" aria-hidden="true" />
+      <WorkbenchFileIcon extension={virtualFile.extension} />
+      <span className="docode-workbench__explorer-label">{virtualFile.name}</span>
+      {category.topicCount > 0 ? (
+        <span aria-hidden="true" className="docode-workbench__explorer-category-count">
+          {category.topicCount}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
 function isActiveRouteFile(route: LinuxDoRoute, file: LinuxDoTopicListRouteFile): boolean {
   return route.kind === 'topic-list' && route.view === file.route.view;
+}
+
+function isActiveCategory(route: LinuxDoRoute, category: LinuxDoCategoryItem): boolean {
+  return (
+    route.kind === 'topic-list' && route.view === 'category' && route.categoryId === category.id
+  );
 }

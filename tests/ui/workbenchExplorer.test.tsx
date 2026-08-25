@@ -20,12 +20,13 @@ describe('WorkbenchExplorer', () => {
     const onNavigateRoute = vi.fn();
     render(
       <WorkbenchExplorer
+        categories={null}
         context={createWorkbenchViewContext(route, 4)}
         navigationState={createOpenViewState(route)}
         onClearSearch={vi.fn()}
         onCloseView={vi.fn()}
         onNavigateRoute={onNavigateRoute}
-        onOpenQuickOpen={vi.fn()}
+        onOpenTagFilter={vi.fn()}
         onRefresh={vi.fn()}
         searchSession={null}
       />,
@@ -71,18 +72,131 @@ describe('WorkbenchExplorer', () => {
     );
   });
 
+  it('lists Linux DO categories as navigable folder rows with color swatches', () => {
+    const route = recognizeLinuxDoRoute('https://linux.do/c/develop/4');
+    const onNavigateRoute = vi.fn();
+    const onOpenTagFilter = vi.fn();
+    render(
+      <WorkbenchExplorer
+        categories={[
+          {
+            color: '#0088cc',
+            description: '开发调优相关讨论',
+            id: 4,
+            name: '开发调优',
+            slug: 'develop',
+            topicCount: 128,
+            url: 'https://linux.do/c/develop/4',
+          },
+          {
+            color: null,
+            description: null,
+            id: 14,
+            name: '资源荟萃',
+            slug: 'resource',
+            topicCount: 0,
+            url: 'https://linux.do/c/resource/14',
+          },
+        ]}
+        context={createWorkbenchViewContext(route, 4)}
+        navigationState={createOpenViewState(route)}
+        onClearSearch={vi.fn()}
+        onCloseView={vi.fn()}
+        onNavigateRoute={onNavigateRoute}
+        onOpenTagFilter={onOpenTagFilter}
+        onRefresh={vi.fn()}
+        searchSession={null}
+      />,
+    );
+
+    expect(screen.getByText('Category Lists')).toBeDefined();
+    const tree = screen.getByRole('tree', { name: 'Linux DO categories' });
+    expect(tree.querySelectorAll('[role="treeitem"]')).toHaveLength(2);
+    const develop = screen.getByRole('treeitem', { name: '开发调优' });
+    expect(develop.getAttribute('aria-current')).toBe('page');
+    expect(develop.getAttribute('title')).toBeNull();
+    expect(develop.getAttribute('data-docode-tooltip')).toBe('开发调优 — 开发调优相关讨论');
+    expect(develop.querySelector('.docode-workbench__explorer-label')?.textContent).toBe(
+      'develop.png',
+    );
+    const developIcon = develop.querySelector<HTMLElement>('[data-file-extension]');
+    expect(developIcon?.dataset.fileExtension).toBe('png');
+    expect(developIcon?.dataset.setiIcon).toBe('_image');
+    expect(develop.querySelector('.docode-workbench__explorer-category-count')?.textContent).toBe(
+      '128',
+    );
+    const resource = screen.getByRole('treeitem', { name: '资源荟萃' });
+    expect(resource.getAttribute('aria-current')).toBeNull();
+    expect(resource.getAttribute('data-docode-tooltip')).toBe('资源荟萃');
+    expect(resource.querySelector('.docode-workbench__explorer-label')?.textContent).toBe(
+      'resource.csv',
+    );
+    expect(resource.querySelector<HTMLElement>('[data-file-extension]')?.dataset.setiIcon).toBe(
+      '_csv',
+    );
+    expect(resource.querySelector('.docode-workbench__explorer-category-count')).toBeNull();
+
+    fireEvent.click(resource);
+    expect(onNavigateRoute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        categoryId: 14,
+        categorySlug: 'resource',
+        kind: 'topic-list',
+        view: 'category',
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filter topics by tag' }));
+    expect(onOpenTagFilter).toHaveBeenCalledOnce();
+  });
+
+  it('reports category loading and unavailable states inside the section', () => {
+    const route = recognizeLinuxDoRoute('https://linux.do/latest');
+    const loading = render(
+      <WorkbenchExplorer
+        categories={null}
+        context={createWorkbenchViewContext(route, 4)}
+        navigationState={createOpenViewState(route)}
+        onClearSearch={vi.fn()}
+        onCloseView={vi.fn()}
+        onNavigateRoute={vi.fn()}
+        onOpenTagFilter={vi.fn()}
+        onRefresh={vi.fn()}
+        searchSession={null}
+      />,
+    );
+    expect(loading.getByText('Loading Linux DO categories…')).toBeDefined();
+    loading.unmount();
+
+    render(
+      <WorkbenchExplorer
+        categories={[]}
+        context={createWorkbenchViewContext(route, 4)}
+        navigationState={createOpenViewState(route)}
+        onClearSearch={vi.fn()}
+        onCloseView={vi.fn()}
+        onNavigateRoute={vi.fn()}
+        onOpenTagFilter={vi.fn()}
+        onRefresh={vi.fn()}
+        searchSession={null}
+      />,
+    );
+    expect(screen.getByText('Linux DO categories are unavailable.')).toBeDefined();
+  });
+
   it('closes an open editor from the Open Editors row', () => {
     const route = recognizeLinuxDoRoute('https://linux.do/latest');
     const navigationState = createOpenViewState(route);
     const onCloseView = vi.fn();
     render(
       <WorkbenchExplorer
+        categories={null}
         context={createWorkbenchViewContext(route, 4)}
         navigationState={navigationState}
         onClearSearch={vi.fn()}
         onCloseView={onCloseView}
         onNavigateRoute={vi.fn()}
-        onOpenQuickOpen={vi.fn()}
+        onOpenTagFilter={vi.fn()}
         onRefresh={vi.fn()}
         searchSession={null}
       />,
@@ -130,12 +244,13 @@ describe('WorkbenchExplorer', () => {
     const onNavigateRoute = vi.fn();
     render(
       <WorkbenchExplorer
+        categories={null}
         context={createWorkbenchViewContext(route, 4)}
         navigationState={createOpenViewState(route)}
         onClearSearch={onClearSearch}
         onCloseView={vi.fn()}
         onNavigateRoute={onNavigateRoute}
-        onOpenQuickOpen={vi.fn()}
+        onOpenTagFilter={vi.fn()}
         onRefresh={vi.fn()}
         searchSession={{
           items: [

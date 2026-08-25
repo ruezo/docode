@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { recognizeLinuxDoRoute } from '../../src/linuxdo/routes';
 import { createOpenViewState } from '../../src/navigation/openViewState';
+import { DEFAULT_WORKBENCH_APPEARANCE } from '../../src/settings/workbenchAppearancePreference';
 import { WorkbenchShell } from '../../src/ui/workbench/WorkbenchShell';
 import { createWorkbenchViewContext } from '../../src/ui/workbench/workbenchContext';
 import {
@@ -506,6 +507,84 @@ describe('WorkbenchShell', () => {
     expect((input as HTMLInputElement).value).toBe('');
     expect(document.activeElement).toBe(input);
   });
+
+  it('records visited views and shows them in the Source Control history sidebar', async () => {
+    const entry = {
+      kind: 'topic-list' as const,
+      path: '/latest',
+      title: 'Latest topics',
+      viewId: 'list:latest',
+      visitedAt: Date.now(),
+      visits: 1,
+    };
+    const onRecordHistory = vi.fn().mockResolvedValue([entry]);
+    const onLoadHistory = vi.fn().mockResolvedValue([entry]);
+    const onClearHistory = vi.fn().mockResolvedValue([]);
+    renderShell(
+      'https://linux.do/latest',
+      undefined,
+      null,
+      undefined,
+      {},
+      {
+        onClearHistory,
+        onLoadHistory,
+        onRecordHistory,
+      },
+    );
+
+    await waitFor(() => {
+      expect(onRecordHistory).toHaveBeenCalledOnce();
+    });
+    expect(onRecordHistory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'topic-list',
+        path: '/latest',
+        title: 'Latest topics',
+        viewId: 'list:latest',
+      }),
+      100,
+    );
+
+    const historyAction = screen.getByRole('button', { name: 'Source Control Browse History' });
+    expect(historyAction.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(historyAction);
+    expect(historyAction.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('SOURCE CONTROL')).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'DOCODE' })).toBeNull();
+    const row = await screen.findByRole('treeitem', { name: /Latest topics/u });
+    expect(row.getAttribute('aria-current')).toBe('page');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Browse History' }));
+    await waitFor(() => {
+      expect(onClearHistory).toHaveBeenCalledOnce();
+    });
+    expect(await screen.findByText(/No browse history yet/u)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Explorer' }));
+    expect(screen.getByRole('heading', { name: 'DOCODE' })).toBeDefined();
+    expect(screen.queryByText('SOURCE CONTROL')).toBeNull();
+  });
+
+  it('never records browse history when the limit is 0', async () => {
+    const onRecordHistory = vi.fn().mockResolvedValue([]);
+    renderShell(
+      'https://linux.do/latest',
+      undefined,
+      null,
+      undefined,
+      {},
+      {
+        initialAppearance: { ...DEFAULT_WORKBENCH_APPEARANCE, historyLimit: 0 },
+        onLoadHistory: vi.fn().mockResolvedValue([]),
+        onRecordHistory,
+      },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Source Control Browse History' }));
+    expect(await screen.findByText(/Browse history is turned off/u)).toBeDefined();
+    expect(onRecordHistory).not.toHaveBeenCalled();
+  });
 });
 
 function renderShell(
@@ -517,6 +596,7 @@ function renderShell(
     Parameters<typeof WorkbenchShell>[0],
     'initialSidebarWidth' | 'onSidebarWidthChange'
   > = {},
+  extra: Partial<Parameters<typeof WorkbenchShell>[0]> = {},
 ) {
   const route = recognizeLinuxDoRoute(href);
   return render(
@@ -549,6 +629,7 @@ function renderShell(
       topicListDocument={null}
       terminalUsername="fixture-user"
       viewRevision={0}
+      {...extra}
     />,
   );
 }

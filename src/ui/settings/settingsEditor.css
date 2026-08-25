@@ -259,6 +259,9 @@
 
 [data-docode-workbench-root][data-docode-workbench-root]
   .docode-settings__control
+  input[type='number'],
+[data-docode-workbench-root][data-docode-workbench-root]
+  .docode-settings__control
   input[type='text'] {
   box-sizing: border-box;
   width: min(320px, 100%);
@@ -270,6 +273,17 @@
   color: var(--docode-color-input-foreground);
   background: var(--docode-color-input-background);
   font: inherit;
+  appearance: textfield;
+}
+
+[data-docode-workbench-root][data-docode-workbench-root]
+  .docode-settings__control
+  input[type='number']::-webkit-inner-spin-button,
+[data-docode-workbench-root][data-docode-workbench-root]
+  .docode-settings__control
+  input[type='number']::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
 }
 
 [data-docode-workbench-root][data-docode-workbench-root]

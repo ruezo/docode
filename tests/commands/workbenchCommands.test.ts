@@ -655,9 +655,16 @@ describe('workbench commands', () => {
     expect(floorReplyRequest).toMatchObject({
       content: 'hello Linux DO',
       expectedGeneration: 7,
+      postId: 107,
       postNumber: 7,
     });
     expect(floorReplyRequest?.signal).toBeInstanceOf(AbortSignal);
+
+    await expect(dispatch(registry, 'reply 9 hello Linux DO', context)).resolves.toMatchObject({
+      error: { message: 'Post 9 is not loaded in the current topic.' },
+      status: 'error',
+    });
+    expect(actions.submitReply).toHaveBeenCalledOnce();
 
     actions.submitReply.mockResolvedValueOnce({ kind: 'submitted', postNumber: null });
     await expect(dispatch(registry, 'reply hello topic', context)).resolves.toMatchObject({
@@ -794,8 +801,17 @@ function topicReplyContext(
   const context = topicContext('/t/synthetic-topic/42', 7, true);
   const fallback = state === 'authentication-required' ? 'native-login' : null;
   const code = state === 'authentication-required' ? 'authentication-required' : null;
+  const capability = { active: null, code: null, fallback: null, state: 'available' } as const;
   return {
     ...context,
+    posts: [
+      {
+        capabilities: { bookmark: capability, copyLink: capability, like: capability },
+        id: 107,
+        number: 7,
+        permalink: 'https://linux.do/t/synthetic-topic/42/7',
+      },
+    ],
     topicInteraction: {
       composer: {
         code,

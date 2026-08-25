@@ -30,7 +30,7 @@ try {
     unpackedNames,
     'The ZIP inventory must exactly match the clean production output.',
   );
-  assert.equal(entries.size, 14, 'The release package must contain the reviewed 14 runtime files.');
+  assert.equal(entries.size, 15, 'The release package must contain the reviewed 15 runtime files.');
   assert.equal(
     unpackedNames.some((name) => name.endsWith('.map')),
     false,

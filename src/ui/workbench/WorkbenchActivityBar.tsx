@@ -4,47 +4,49 @@ import type { NotificationsLoadOutcome } from '../../linuxdo/notificationsLoader
 import { Codicon, type CodiconName } from '../icons/codicon';
 
 interface WorkbenchActivityBarProps {
+  readonly explorerActive: boolean;
+  readonly historyActive: boolean;
   readonly onLoadNotifications?:
     ((signal: AbortSignal) => Promise<NotificationsLoadOutcome>) | undefined;
   readonly onOpenExplorer: () => void;
+  readonly onOpenHistory: () => void;
   readonly onOpenQuickOpen: () => void;
   readonly onOpenSettings: () => void;
   readonly onRestoreOriginal: (() => void) | null;
   readonly settingsOpen: boolean;
-  readonly sidebarOpen: boolean;
   readonly unreadNotifications?: number;
 }
 
 const ACCOUNT_PREFERENCES_URL = 'https://linux.do/my/activity';
 
 export function WorkbenchActivityBar({
+  explorerActive,
+  historyActive,
   onLoadNotifications,
   onOpenExplorer,
+  onOpenHistory,
   onOpenQuickOpen,
   onOpenSettings,
   onRestoreOriginal,
   settingsOpen,
-  sidebarOpen,
   unreadNotifications = 0,
 }: WorkbenchActivityBarProps) {
   return (
     <nav className="docode-workbench__activitybar" aria-label="Activity Bar">
       <div className="docode-workbench__activity-group">
         <ActivityAction
-          active={sidebarOpen}
+          active={explorerActive}
           icon="files"
           label="Explorer"
           onClick={onOpenExplorer}
         />
         <ActivityAction icon="search" label="Search and Quick Open" onClick={onOpenQuickOpen} />
-        <a
-          aria-label="Latest Linux DO topics"
-          className="docode-workbench__activity-action"
-          data-docode-tooltip="Latest Linux DO topics"
-          href="https://linux.do/latest"
-        >
-          <Codicon name="source-control" />
-        </a>
+        <ActivityAction
+          active={historyActive}
+          icon="source-control"
+          label="Source Control Browse History"
+          onClick={onOpenHistory}
+        />
         <ActivityAction disabled icon="debug-alt" label="Run and Debug unavailable" unavailable />
         <ActivityAction
           badge="warning"

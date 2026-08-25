@@ -35,6 +35,11 @@ import type {
 } from '../../linuxdo/composerAdapter';
 import type { LinuxDoSimpleTopicListView } from '../../linuxdo/explorerTopicLoader';
 import type { NotificationsLoadOutcome } from '../../linuxdo/notificationsLoader';
+import type {
+  CategoriesLoadOutcome,
+  LinuxDoCategoryItem,
+  TagsLoadOutcome,
+} from '../../linuxdo/taxonomyLoader';
 import { detectLinuxDoCapabilities, type ComposerCapability } from '../../linuxdo/capabilities';
 import { DOCODE_BUILD_TAG } from '../../runtime/buildTag';
 import type {
@@ -46,7 +51,15 @@ import type { RouteChangeSource } from '../../linuxdo/routeObserver';
 import { recognizeLinuxDoRoute, type LinuxDoRoute } from '../../linuxdo/routes';
 import type { TopicListPageLoadOutcome } from '../../linuxdo/topicListPaginator';
 import type { TopicPostPageLoadOutcome } from '../../linuxdo/topicPaginator';
-import type { OpenViewEvidence, OpenViewState } from '../../navigation/openViewState';
+import {
+  getOpenViewId,
+  type OpenViewEvidence,
+  type OpenViewState,
+} from '../../navigation/openViewState';
+import type {
+  BrowseHistoryEntry,
+  BrowseHistoryRecordInput,
+} from '../../settings/browseHistoryStore';
 import { createQuickOpenCollection, type QuickOpenItem } from '../../quickOpen/quickOpenModel';
 import {
   isTabActionAvailable,
@@ -58,6 +71,7 @@ import { Codicon } from '../icons/codicon';
 import { WorkbenchTooltip } from '../hover/WorkbenchTooltip';
 import { CommandPalette } from '../commandPalette/CommandPalette';
 import { QuickOpen } from '../quickOpen/QuickOpen';
+import { TagQuickPick } from '../quickOpen/TagQuickPick';
 import { TerminalView } from '../terminal/TerminalView';
 import { EditorTabs, PanelFrame, StatusFrame, type PanelTab } from './WorkbenchChrome';
 import { NativeComposerSurface } from './NativeComposerSurface';
@@ -70,6 +84,7 @@ import {
   type WorkbenchNotificationSeverity,
 } from './WorkbenchNotifications';
 import { WorkbenchExplorer } from './WorkbenchExplorer';
+import { WorkbenchHistory } from './WorkbenchHistory';
 import { WorkbenchTitleBar } from './WorkbenchTitleBar';
 import type { WorkbenchViewContext } from './workbenchContext';
 import type { WorkbenchSurfaceState } from './workbenchSurfaceState';
@@ -202,7 +217,7 @@ interface TopicPaginationState {
 }
 
 type PanelViewId = 'outline' | 'terminal';
-type WorkbenchOverlay = 'command-palette' | 'quick-open';
+type WorkbenchOverlay = 'command-palette' | 'quick-open' | 'tag-filter';
 
 const PROBLEMS_PANEL_TAB: PanelTab = { disabled: true, id: 'problems', label: 'Problems' };
 const OUTPUT_PANEL_TAB: PanelTab = { disabled: true, id: 'output', label: 'Output' };
@@ -272,6 +287,15 @@ interface WorkbenchShellProps {
   readonly topicListDocument: TopicListDocument | null;
   readonly onLoadNotifications?:
     ((signal: AbortSignal) => Promise<NotificationsLoadOutcome>) | undefined;
+  readonly onLoadCategories?: ((signal: AbortSignal) => Promise<CategoriesLoadOutcome>) | undefined;
+  readonly onLoadTags?: ((signal: AbortSignal) => Promise<TagsLoadOutcome>) | undefined;
+  readonly onLoadHistory?: (() => Promise<readonly BrowseHistoryEntry[]>) | undefined;
+  readonly onRecordHistory?:
+    | ((input: BrowseHistoryRecordInput, limit: number) => Promise<readonly BrowseHistoryEntry[]>)
+    | undefined;
+  readonly onRemoveHistoryEntry?:
+    ((viewId: string) => Promise<readonly BrowseHistoryEntry[]>) | undefined;
+  readonly onClearHistory?: (() => Promise<readonly BrowseHistoryEntry[]>) | undefined;
   readonly terminalUsername: string | null;
   readonly unreadNotifications?: number;
   readonly viewRevision: number;
@@ -306,6 +330,12 @@ export function WorkbenchShell({
   topicDetailDocument,
   topicListDocument,
   onLoadNotifications,
+  onLoadCategories,
+  onLoadTags,
+  onLoadHistory,
+  onRecordHistory,
+  onRemoveHistoryEntry,
+  onClearHistory,
   terminalUsername,
   unreadNotifications = 0,
   viewRevision,
@@ -320,6 +350,13 @@ export function WorkbenchShell({
   const [sidebarOpen, setSidebarOpen] = useState(
     () => window.innerWidth > SIDEBAR_OVERLAY_BREAKPOINT,
   );
+  const [sidebarView, setSidebarView] = useState<'explorer' | 'history'>('explorer');
+  const [historySnapshot, setHistorySnapshot] = useState<{
+    readonly at: number;
+    readonly entries: readonly BrowseHistoryEntry[];
+  } | null>(null);
+  const [historyLoadToken, setHistoryLoadToken] = useState(0);
+  const lastHistoryStamp = useRef<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(() =>
     clampSidebarWidth(initialSidebarWidth, window.innerWidth),
   );
@@ -357,6 +394,10 @@ export function WorkbenchShell({
   const [layoutPersistencePending, setLayoutPersistencePending] = useState(false);
   const [loadedExplorerTopicDocument, setLoadedExplorerTopicDocument] =
     useState<TopicListDocument | null>(null);
+  const [explorerCategories, setExplorerCategories] = useState<
+    readonly LinuxDoCategoryItem[] | null
+  >(null);
+  const [categoriesLoadToken, setCategoriesLoadToken] = useState(0);
   const [topicListPagination, setTopicListPagination] = useState<TopicListPaginationState | null>(
     null,
   );
@@ -555,6 +596,109 @@ export function WorkbenchShell({
       controller.abort();
     };
   }, [context.route.kind, loadedExplorerTopicDocument, onLoadExplorerTopics]);
+
+  useEffect(() => {
+    if (!onLoadCategories || !sidebarOpen) return;
+    const controller = new AbortController();
+    void onLoadCategories(controller.signal).then((outcome) => {
+      if (controller.signal.aborted || outcome.kind === 'aborted') return;
+      setExplorerCategories(outcome.kind === 'ready' ? outcome.categories : []);
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [categoriesLoadToken, onLoadCategories, sidebarOpen]);
+
+  useEffect(() => {
+    if (!onLoadHistory || !sidebarOpen || sidebarView !== 'history') return;
+    let active = true;
+    void onLoadHistory().then(
+      (entries) => {
+        if (active) setHistorySnapshot({ at: Date.now(), entries });
+      },
+      () => {
+        if (active) setHistorySnapshot({ at: Date.now(), entries: [] });
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [historyLoadToken, onLoadHistory, sidebarOpen, sidebarView]);
+
+  const historyLimit = appearance.historyLimit;
+  const historyRecordTitle =
+    context.route.kind === 'topic'
+      ? readyTopicDetail?.topic.id === context.route.topicId
+        ? readyTopicDetail.topic.title
+        : null
+      : context.supported
+        ? context.statusLabel
+        : null;
+  useEffect(() => {
+    const route = context.route;
+    if (!onRecordHistory || historyLimit <= 0 || !historyRecordTitle) return;
+    if (route.kind === 'unsupported') return;
+    if (!context.canonicalPath.startsWith('/') || context.canonicalPath.startsWith('//')) return;
+    const viewId = getOpenViewId(route);
+    const stamp = `${viewId}\u0000${historyRecordTitle}`;
+    if (lastHistoryStamp.current === stamp) return;
+    lastHistoryStamp.current = stamp;
+    void onRecordHistory(
+      {
+        kind: route.kind,
+        path: context.canonicalPath,
+        title: historyRecordTitle,
+        viewId,
+        visitedAt: Date.now(),
+      },
+      historyLimit,
+    ).then(
+      (entries) => {
+        if (modeDispatchActive.current) setHistorySnapshot({ at: Date.now(), entries });
+      },
+      () => undefined,
+    );
+  }, [context.canonicalPath, context.route, historyLimit, historyRecordTitle, onRecordHistory]);
+
+  const toggleSidebarView = useCallback(
+    (view: 'explorer' | 'history') => {
+      if (sidebarOpen && sidebarView === view) {
+        setSidebarOpen(false);
+        return;
+      }
+      setSidebarView(view);
+      setSidebarOpen(true);
+    },
+    [sidebarOpen, sidebarView],
+  );
+
+  const refreshHistory = useCallback(() => {
+    setHistorySnapshot(null);
+    setHistoryLoadToken((current) => current + 1);
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    if (!onClearHistory) return;
+    void onClearHistory().then(
+      (entries) => {
+        if (modeDispatchActive.current) setHistorySnapshot({ at: Date.now(), entries });
+      },
+      () => undefined,
+    );
+  }, [onClearHistory]);
+
+  const removeHistoryEntry = useCallback(
+    (viewId: string) => {
+      if (!onRemoveHistoryEntry) return;
+      void onRemoveHistoryEntry(viewId).then(
+        (entries) => {
+          if (modeDispatchActive.current) setHistorySnapshot({ at: Date.now(), entries });
+        },
+        () => undefined,
+      );
+    },
+    [onRemoveHistoryEntry],
+  );
 
   const activateRoute = useCallback(
     (route: LinuxDoRoute) => {
@@ -1142,6 +1286,16 @@ export function WorkbenchShell({
     return true;
   }, [context.supported]);
 
+  const showTagFilter = useCallback((): boolean => {
+    if (!context.supported) return false;
+    setOverlayReturnFocus((current) => {
+      if (current) return current;
+      return document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    });
+    setOverlay('tag-filter');
+    return true;
+  }, [context.supported]);
+
   const showCommandPalette = useCallback((): boolean => {
     if (!context.supported) return false;
     setOverlayReturnFocus((current) => {
@@ -1357,7 +1511,7 @@ export function WorkbenchShell({
   const runPostCommand = useCallback<RunTopicPostCommand>(
     async ({ commandId, reply, signal, source }) => {
       const result = await commandRegistry.dispatchById({
-        arguments: [],
+        arguments: commandId === 'reply' ? [String(reply.floor.number)] : [],
         commandId: getTopicPostCommandId(commandId),
         context: createPostCommandContext(reply),
         signal,
@@ -1543,6 +1697,7 @@ export function WorkbenchShell({
       data-route-source={routeSource}
       data-resizing={resizing ?? undefined}
       data-sidebar-open={sidebarOpen ? 'true' : 'false'}
+      data-sidebar-view={sidebarView}
       data-supported={context.supported ? 'true' : 'false'}
       role="region"
       style={shellStyle}
@@ -1583,9 +1738,14 @@ export function WorkbenchShell({
       />
       <div className="docode-workbench__main">
         <WorkbenchActivityBar
+          explorerActive={sidebarOpen && sidebarView === 'explorer'}
+          historyActive={sidebarOpen && sidebarView === 'history'}
           onLoadNotifications={onLoadNotifications}
           onOpenExplorer={() => {
-            setSidebarOpen((current) => !current);
+            toggleSidebarView('explorer');
+          }}
+          onOpenHistory={() => {
+            toggleSidebarView('history');
           }}
           onOpenQuickOpen={() => {
             void commandRegistry.dispatchById({
@@ -1618,26 +1778,35 @@ export function WorkbenchShell({
             setSettingsOpen(true);
           }}
           settingsOpen={settingsOpen}
-          sidebarOpen={sidebarOpen}
           unreadNotifications={unreadNotifications}
         />
-        {sidebarOpen ? (
+        {sidebarOpen && sidebarView === 'history' ? (
+          <WorkbenchHistory
+            context={context}
+            entries={historySnapshot?.entries ?? null}
+            historyLimit={historyLimit}
+            now={historySnapshot?.at ?? null}
+            onClearHistory={clearHistory}
+            onNavigateRoute={activateRoute}
+            onRefresh={refreshHistory}
+            onRemoveEntry={removeHistoryEntry}
+          />
+        ) : null}
+        {sidebarOpen && sidebarView === 'explorer' ? (
           <WorkbenchExplorer
+            categories={explorerCategories}
             context={context}
             navigationState={navigationState}
             onCloseView={(viewId) => {
               void runTabCommand({ id: 'close', viewId }, 'editor-action');
             }}
             onNavigateRoute={activateRoute}
-            onOpenQuickOpen={() => {
-              void commandRegistry.dispatchById({
-                arguments: [],
-                commandId: QUICK_OPEN_COMMAND_ID,
-                context: commandContext,
-                source: 'editor-action',
-              });
+            onOpenTagFilter={() => {
+              showTagFilter();
             }}
             onRefresh={() => {
+              setExplorerCategories(null);
+              setCategoriesLoadToken((current) => current + 1);
               void actions.onRetry();
             }}
             onClearSearch={() => {
@@ -2135,6 +2304,15 @@ export function WorkbenchShell({
             onNavigateRoute(item.route, context.generation, signal)
           }
           onSearch={onSearch}
+        />
+      ) : null}
+      {overlay === 'tag-filter' && onLoadTags ? (
+        <TagQuickPick
+          onDismiss={dismissOverlay}
+          onLoadTags={onLoadTags}
+          onOpenTag={(tag, signal) =>
+            onNavigateRoute(recognizeLinuxDoRoute(tag.url), context.generation, signal)
+          }
         />
       ) : null}
       <WorkbenchNotificationToasts

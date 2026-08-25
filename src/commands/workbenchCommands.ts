@@ -308,9 +308,16 @@ export function createWorkbenchCommandRegistry(
   registry.register<ReplyCommandArguments>({
     entryPoints: ['terminal', 'palette', 'context-menu', 'editor-action'],
     execute: async ({ arguments: reply, context, signal }) => {
+      const target =
+        reply.floor === null
+          ? null
+          : (context.posts.find(({ number }) => number === reply.floor) ?? null);
+      if (reply.floor !== null && !target) {
+        return unavailable(`Post ${String(reply.floor)} is not loaded in the current topic.`);
+      }
       const request = {
         expectedGeneration: context.view.generation,
-        ...(reply.floor === null ? {} : { postNumber: reply.floor }),
+        ...(target ? { postId: target.id, postNumber: target.number } : {}),
         signal,
       };
       if (reply.content === null) {

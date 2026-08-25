@@ -4,6 +4,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LinuxDoComposerAdapter } from '../../src/linuxdo/composerAdapter';
+import {
+  POST_REPLY_OPEN_EVENT,
+  POST_REPLY_OPEN_RESULT_EVENT,
+  readPostReplyOpenDetail,
+} from '../../src/linuxdo/pageBridge';
 import { recognizeLinuxDoRoute } from '../../src/linuxdo/routes';
 
 const performanceCallbacks = new Set<PerformanceObserverCallback>();
@@ -346,6 +351,99 @@ describe('LinuxDoComposerAdapter', () => {
     expect(adapter.snapshot.feedback).toEqual({
       kind: 'submitted',
       message: 'Reply confirmed by Linux DO.',
+    });
+    adapter.dispose();
+  });
+
+  it('opens a post reply through the page bridge when the floor is not rendered', async () => {
+    const adapter = createAdapter();
+    const events = new AbortController();
+    const root = getElement('#reply-control');
+    const footerReplyClick = vi.fn();
+    getButton('#topic-footer-buttons .create').addEventListener('click', footerReplyClick);
+    const details: unknown[] = [];
+    document.addEventListener(
+      POST_REPLY_OPEN_EVENT,
+      (event) => {
+        details.push(readPostReplyOpenDetail(event));
+        root.className = 'open hide-preview';
+      },
+      { signal: events.signal },
+    );
+
+    await expect(
+      adapter.open({ expectedGeneration: 0, postId: 907, postNumber: 9 }),
+    ).resolves.toEqual({ dirty: false, kind: 'opened' });
+    expect(details).toEqual([{ postId: 907, postNumber: 9, topicId: 42 }]);
+    expect(footerReplyClick).not.toHaveBeenCalled();
+    events.abort();
+    adapter.dispose();
+  });
+
+  it('fails fast when the page bridge cannot target the requested post', async () => {
+    const adapter = createAdapter();
+    const events = new AbortController();
+    document.addEventListener(
+      POST_REPLY_OPEN_EVENT,
+      () => {
+        document.dispatchEvent(
+          new CustomEvent(POST_REPLY_OPEN_RESULT_EVENT, {
+            detail: JSON.stringify({ ok: false }),
+          }),
+        );
+      },
+      { signal: events.signal },
+    );
+
+    await expect(
+      adapter.open({ expectedGeneration: 0, postId: 907, postNumber: 9 }),
+    ).resolves.toMatchObject({
+      code: 'native-dispatch-failed',
+      kind: 'failed',
+      message: 'Linux DO could not open a Reply composer for this post.',
+    });
+    events.abort();
+    adapter.dispose();
+  });
+
+  it('falls back to the rendered floor Reply control when the bridge reports failure', async () => {
+    const adapter = createAdapter();
+    const events = new AbortController();
+    const root = getElement('#reply-control');
+    const postReply = document.createElement('button');
+    postReply.className = 'post-action-menu__reply';
+    postReply.textContent = 'Reply to post';
+    getElement('.post-controls').append(postReply);
+    const postReplyClick = vi.fn(() => {
+      root.className = 'open hide-preview';
+    });
+    postReply.addEventListener('click', postReplyClick);
+    document.addEventListener(
+      POST_REPLY_OPEN_EVENT,
+      () => {
+        document.dispatchEvent(
+          new CustomEvent(POST_REPLY_OPEN_RESULT_EVENT, {
+            detail: JSON.stringify({ ok: false }),
+          }),
+        );
+      },
+      { signal: events.signal },
+    );
+
+    await expect(
+      adapter.open({ expectedGeneration: 0, postId: 100, postNumber: 1 }),
+    ).resolves.toEqual({ dirty: false, kind: 'opened' });
+    expect(postReplyClick).toHaveBeenCalledOnce();
+    events.abort();
+    adapter.dispose();
+  });
+
+  it('rejects a post reply without a post id when the floor is not rendered', async () => {
+    const adapter = createAdapter();
+
+    await expect(adapter.open({ expectedGeneration: 0, postNumber: 9 })).resolves.toMatchObject({
+      code: 'native-control-not-found',
+      kind: 'failed',
     });
     adapter.dispose();
   });

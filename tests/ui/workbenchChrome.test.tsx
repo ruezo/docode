@@ -304,12 +304,14 @@ describe('platform workbench chrome', () => {
 
   it('shows the Linux DO unread count as a VS Code-style account badge', () => {
     const activityBarProps = {
+      explorerActive: true,
+      historyActive: false,
       onOpenExplorer: vi.fn(),
+      onOpenHistory: vi.fn(),
       onOpenQuickOpen: vi.fn(),
       onOpenSettings: vi.fn(),
       onRestoreOriginal: vi.fn(),
       settingsOpen: false,
-      sidebarOpen: true,
     };
     const { rerender } = render(<WorkbenchActivityBar {...activityBarProps} />);
     expect(
@@ -356,13 +358,15 @@ describe('platform workbench chrome', () => {
     });
     render(
       <WorkbenchActivityBar
+        explorerActive
+        historyActive={false}
         onLoadNotifications={onLoadNotifications}
         onOpenExplorer={vi.fn()}
+        onOpenHistory={vi.fn()}
         onOpenQuickOpen={vi.fn()}
         onOpenSettings={vi.fn()}
         onRestoreOriginal={vi.fn()}
         settingsOpen={false}
-        sidebarOpen
         unreadNotifications={1}
       />,
     );
@@ -392,12 +396,14 @@ describe('platform workbench chrome', () => {
   it('renders the requested Activity Bar stack without blank or unrelated entries', () => {
     const { container } = render(
       <WorkbenchActivityBar
+        explorerActive
+        historyActive={false}
         onOpenExplorer={vi.fn()}
+        onOpenHistory={vi.fn()}
         onOpenQuickOpen={vi.fn()}
         onOpenSettings={vi.fn()}
         onRestoreOriginal={vi.fn()}
         settingsOpen={false}
-        sidebarOpen
       />,
     );
 
@@ -418,6 +424,9 @@ describe('platform workbench chrome', () => {
         .getByRole('button', { name: 'Search and Quick Open' })
         .querySelector('.codicon-search'),
     ).not.toBeNull();
+    const historyAction = screen.getByRole('button', { name: 'Source Control Browse History' });
+    expect(historyAction.getAttribute('aria-pressed')).toBe('false');
+    expect(historyAction.querySelector('.codicon-source-control')).not.toBeNull();
     expect(screen.queryByRole('button', { name: /Containers unavailable/u })).toBeNull();
     expect(screen.queryByRole('button', { name: /Python unavailable/u })).toBeNull();
     expect(container.querySelector('[data-tone="warning"]')).not.toBeNull();

@@ -21,6 +21,7 @@ describe('workbench appearance preference', () => {
 
     const preference = {
       commandCenterLabel: 'Linux DO',
+      historyLimit: 250,
       showTopicAvatars: false,
       theme: 'light' as const,
       topicDetailBodyColor: '#112233',
@@ -61,6 +62,41 @@ describe('workbench appearance preference', () => {
     await expect(fakeBrowser.storage.local.get('workbench.appearance')).resolves.toEqual({
       'workbench.appearance': DEFAULT_WORKBENCH_APPEARANCE,
     });
+  });
+
+  it('fills the browse history limit for values stored before the setting existed', async () => {
+    const { historyLimit, ...legacyPreference } = {
+      ...DEFAULT_WORKBENCH_APPEARANCE,
+      commandCenterLabel: 'Legacy',
+    };
+    void historyLimit;
+    await fakeBrowser.storage.local.set({ 'workbench.appearance': legacyPreference });
+
+    await expect(workbenchAppearancePreferenceStore.read()).resolves.toEqual({
+      recoveredInvalidValue: false,
+      value: { ...legacyPreference, historyLimit: DEFAULT_WORKBENCH_APPEARANCE.historyLimit },
+    });
+  });
+
+  it('clamps browse history limit writes into the supported range', () => {
+    expect(
+      normalizeWorkbenchAppearancePreference({
+        ...DEFAULT_WORKBENCH_APPEARANCE,
+        historyLimit: 5000,
+      }).historyLimit,
+    ).toBe(1000);
+    expect(
+      normalizeWorkbenchAppearancePreference({
+        ...DEFAULT_WORKBENCH_APPEARANCE,
+        historyLimit: -5,
+      }).historyLimit,
+    ).toBe(0);
+    expect(
+      normalizeWorkbenchAppearancePreference({
+        ...DEFAULT_WORKBENCH_APPEARANCE,
+        historyLimit: Number.NaN,
+      }).historyLimit,
+    ).toBe(DEFAULT_WORKBENCH_APPEARANCE.historyLimit);
   });
 
   it('resolves explicit themes and follows the current system theme in system mode', () => {

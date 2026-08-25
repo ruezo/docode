@@ -1,9 +1,16 @@
 import { storage } from 'wxt/utils/storage';
 
+import {
+  DEFAULT_BROWSE_HISTORY_LIMIT,
+  MAXIMUM_BROWSE_HISTORY_LIMIT,
+  normalizeBrowseHistoryLimit,
+} from './browseHistoryStore';
+
 export type WorkbenchThemePreference = 'dark' | 'light' | 'system';
 
 export interface WorkbenchAppearancePreference {
   readonly commandCenterLabel: string;
+  readonly historyLimit: number;
   readonly showTopicAvatars: boolean;
   readonly theme: WorkbenchThemePreference;
   readonly topicDetailBodyColor: string;
@@ -22,6 +29,7 @@ export interface WorkbenchAppearancePreferenceStore {
 
 export const DEFAULT_WORKBENCH_APPEARANCE: WorkbenchAppearancePreference = {
   commandCenterLabel: 'DOCode',
+  historyLimit: DEFAULT_BROWSE_HISTORY_LIMIT,
   showTopicAvatars: true,
   theme: 'system',
   topicDetailBodyColor: '#ce9178',
@@ -36,7 +44,10 @@ export const workbenchAppearancePreferenceStore: WorkbenchAppearancePreferenceSt
   async read() {
     const storedValue = await appearanceItem.getValue();
     if (isWorkbenchAppearancePreference(storedValue)) {
-      return { recoveredInvalidValue: false, value: storedValue };
+      return {
+        recoveredInvalidValue: false,
+        value: normalizeWorkbenchAppearancePreference(storedValue),
+      };
     }
 
     await appearanceItem.setValue(DEFAULT_WORKBENCH_APPEARANCE);
@@ -52,6 +63,7 @@ export function normalizeWorkbenchAppearancePreference(
 ): WorkbenchAppearancePreference {
   return {
     commandCenterLabel: normalizeCommandCenterLabel(value.commandCenterLabel),
+    historyLimit: normalizeBrowseHistoryLimit(value.historyLimit),
     showTopicAvatars: value.showTopicAvatars,
     theme: isWorkbenchThemePreference(value.theme) ? value.theme : 'system',
     topicDetailBodyColor: normalizeHexColor(
@@ -80,7 +92,17 @@ function isWorkbenchAppearancePreference(value: unknown): value is WorkbenchAppe
     isHexColor(candidate.topicListBodyColor) &&
     isHexColor(candidate.topicDetailBodyColor) &&
     typeof candidate.showTopicAvatars === 'boolean' &&
-    isCommandCenterLabel(candidate.commandCenterLabel)
+    isCommandCenterLabel(candidate.commandCenterLabel) &&
+    (candidate.historyLimit === undefined || isHistoryLimit(candidate.historyLimit))
+  );
+}
+
+function isHistoryLimit(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= MAXIMUM_BROWSE_HISTORY_LIMIT
   );
 }
 

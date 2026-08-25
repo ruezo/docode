@@ -1,7 +1,11 @@
-import type { WorkbenchFileExtension } from './workbenchFileType';
+import type { WorkbenchAnyFileExtension } from './workbenchFileType';
 import { WORKBENCH_FILE_ICON_DEFINITIONS } from './workbenchFileIconTheme';
 
-export function WorkbenchFileIcon({ extension }: { readonly extension: WorkbenchFileExtension }) {
+export function WorkbenchFileIcon({
+  extension,
+}: {
+  readonly extension: WorkbenchAnyFileExtension;
+}) {
   const definition = WORKBENCH_FILE_ICON_DEFINITIONS[extension];
 
   return (

@@ -448,23 +448,32 @@ describe('mountWorkbench', () => {
       <td class="activity"><a href="/t/topic-1/1/2">now</a></td></tr>
     </tbody></table></main>`;
     const fetchDescriptor = Object.getOwnPropertyDescriptor(window, 'fetch');
-    const fetch = vi
-      .fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
-      .mockResolvedValueOnce(
-        Response.json({
-          topic_list: {
-            more_topics_url: '/latest?no_definitions=true&page=1',
-            topics: [jsonTopic(1)],
-          },
-          users: [{ id: 1, username: 'user-1' }],
-        }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({
-          topic_list: { more_topics_url: null, topics: [jsonTopic(2)] },
-          users: [{ id: 2, username: 'user-2' }],
-        }),
-      );
+    const fetch = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
+      (input) => {
+        const href =
+          input instanceof URL ? input.href : typeof input === 'string' ? input : input.url;
+        if (href === 'https://linux.do/categories.json') {
+          return Promise.resolve(Response.json({ category_list: { categories: [] } }));
+        }
+        if (href === 'https://linux.do/latest.json') {
+          return Promise.resolve(
+            Response.json({
+              topic_list: {
+                more_topics_url: '/latest?no_definitions=true&page=1',
+                topics: [jsonTopic(1)],
+              },
+              users: [{ id: 1, username: 'user-1' }],
+            }),
+          );
+        }
+        return Promise.resolve(
+          Response.json({
+            topic_list: { more_topics_url: null, topics: [jsonTopic(2)] },
+            users: [{ id: 2, username: 'user-2' }],
+          }),
+        );
+      },
+    );
     Object.defineProperty(window, 'fetch', { configurable: true, value: fetch });
 
     try {
@@ -499,9 +508,11 @@ describe('mountWorkbench', () => {
         'Topic 2',
       );
       expect(
-        fetch.mock.calls.map(([input]) =>
-          input instanceof URL ? input.href : typeof input === 'string' ? input : input.url,
-        ),
+        fetch.mock.calls
+          .map(([input]) =>
+            input instanceof URL ? input.href : typeof input === 'string' ? input : input.url,
+          )
+          .filter((href) => href !== 'https://linux.do/categories.json'),
       ).toEqual([
         'https://linux.do/latest.json',
         'https://linux.do/latest?no_definitions=true&page=1',

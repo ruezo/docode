@@ -403,7 +403,7 @@ function movePostMenuFocus(event: KeyboardEvent<HTMLDivElement>): void {
 function postMenuLabel(commandId: TopicPostCommandId, reply: TopicReplyDocumentBlock): string {
   switch (commandId) {
     case 'reply':
-      return 'Reply to Topic';
+      return `Reply to Post ${String(reply.floor.number)}`;
     case 'like':
       return reply.capabilities.like.active ? 'Remove Like' : 'Like';
     case 'bookmark':

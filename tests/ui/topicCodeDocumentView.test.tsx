@@ -1134,7 +1134,7 @@ describe('TopicCodeEditorSurface', () => {
     const menu = within(view.container).getByRole('menu', { name: 'Post 1 actions menu' });
     await waitFor(() => {
       expect(document.activeElement).toBe(
-        within(menu).getByRole('menuitem', { name: 'Reply to Topic' }),
+        within(menu).getByRole('menuitem', { name: 'Reply to Post 1' }),
       );
     });
     expect(within(menu).getByRole('menuitem', { name: 'Bookmark' }).hasAttribute('disabled')).toBe(
@@ -1145,7 +1145,7 @@ describe('TopicCodeEditorSurface', () => {
     ).toBe('Bookmark is disabled by Linux DO.');
     expect(
       within(menu)
-        .getByRole('menuitem', { name: 'Reply to Topic' })
+        .getByRole('menuitem', { name: 'Reply to Post 1' })
         .hasAttribute('data-docode-tooltip'),
     ).toBe(false);
     fireEvent.keyDown(menu, { key: 'ArrowDown' });

@@ -5,7 +5,13 @@ import {
   type ComposerCapability,
   type NativeActionCapability,
 } from './capabilities';
-import { TOPIC_REPLY_SHORTCUT_EVENT, dispatchTopicReplyShortcutKeys } from './pageBridge';
+import {
+  POST_REPLY_OPEN_RESULT_EVENT,
+  TOPIC_REPLY_SHORTCUT_EVENT,
+  dispatchPostReplyOpen,
+  dispatchTopicReplyShortcutKeys,
+  readPostReplyOpenResult,
+} from './pageBridge';
 import { recognizeLinuxDoRoute, type LinuxDoRoute } from './routes';
 
 export type LinuxDoComposerFailureCode =
@@ -30,6 +36,7 @@ export type LinuxDoComposerOpenOutcome =
 
 export interface LinuxDoComposerOpenRequest {
   readonly expectedGeneration: number;
+  readonly postId?: number;
   readonly postNumber?: number;
   readonly signal?: AbortSignal;
 }
@@ -263,9 +270,15 @@ export class LinuxDoComposerAdapter {
       return failed('native-control-disabled', 'Linux DO is already submitting this reply.', false);
     }
     if (composer.state !== 'closed') return unavailableComposer(composer, reply);
-    if (reply.state !== 'available' || (request.postNumber && !reply.control)) {
+    if (reply.state === 'authentication-required' || reply.state === 'disabled') {
       return unavailableComposer(composer, reply);
     }
+    if (request.postNumber) {
+      const control = reply.state === 'available' ? reply.control : null;
+      if (!control && request.postId === undefined) return unavailableComposer(composer, reply);
+      return this.#dispatchOpen(request, composer, reply, control);
+    }
+    if (reply.state !== 'available') return unavailableComposer(composer, reply);
     return this.#dispatchOpen(request, composer, reply, reply.control);
   }
 
@@ -275,9 +288,10 @@ export class LinuxDoComposerAdapter {
     reply: NativeActionCapability,
     control: HTMLElement | null,
   ): Promise<LinuxDoComposerOpenOutcome> {
+    const postBridge = Boolean(request.postNumber) && request.postId !== undefined;
     const topicShortcut =
       !request.postNumber && (!control || control.matches('.post-action-menu__reply'));
-    if (!composer.root?.isConnected || (!topicShortcut && !control?.isConnected)) {
+    if (!composer.root?.isConnected || (!topicShortcut && !postBridge && !control?.isConnected)) {
       return failed(
         'native-control-not-found',
         'Linux DO did not expose a connected Reply control.',
@@ -288,14 +302,20 @@ export class LinuxDoComposerAdapter {
     if (reply.state === 'disabled') return unavailableComposer(composer, reply);
 
     const confirmation = this.#waitForOpen(request, composer.root);
+    const detachBridgeWatch = postBridge
+      ? this.#watchPostReplyBridge(control, confirmation.fail)
+      : null;
     this.#setFeedback({ kind: 'opening', message: 'Opening the Linux DO composer…' });
     try {
-      if (topicShortcut) {
+      if (postBridge) {
+        this.#dispatchPostReplyOpen(request);
+      } else if (topicShortcut) {
         dispatchTopicReplyShortcut(this.#document);
       } else if (control) {
         control.click();
       }
     } catch {
+      detachBridgeWatch?.();
       confirmation.cancel();
       this.#setFeedback({ kind: 'error', message: 'Linux DO rejected the Reply action.' });
       return failed(
@@ -305,10 +325,52 @@ export class LinuxDoComposerAdapter {
       );
     }
     const outcome = await confirmation.outcome;
+    detachBridgeWatch?.();
     this.#setFeedback(
       outcome.kind === 'failed' ? { kind: 'error', message: outcome.message } : null,
     );
     return outcome;
+  }
+
+  #dispatchPostReplyOpen(request: LinuxDoComposerOpenRequest): void {
+    const route = this.#currentRoute;
+    if (
+      route.kind !== 'topic' ||
+      request.postId === undefined ||
+      request.postNumber === undefined
+    ) {
+      return;
+    }
+    dispatchPostReplyOpen(this.#document, {
+      postId: request.postId,
+      postNumber: request.postNumber,
+      topicId: route.topicId,
+    });
+  }
+
+  #watchPostReplyBridge(
+    control: HTMLElement | null,
+    fail: (outcome: LinuxDoComposerOpenOutcome) => void,
+  ): () => void {
+    const onResult = (event: Event) => {
+      const result = readPostReplyOpenResult(event);
+      if (!result || result.ok) return;
+      if (control?.isConnected) {
+        control.click();
+        return;
+      }
+      fail(
+        failed(
+          'native-dispatch-failed',
+          'Linux DO could not open a Reply composer for this post.',
+          true,
+        ),
+      );
+    };
+    this.#document.addEventListener(POST_REPLY_OPEN_RESULT_EVENT, onResult);
+    return () => {
+      this.#document.removeEventListener(POST_REPLY_OPEN_RESULT_EVENT, onResult);
+    };
   }
 
   #waitForOpen(
@@ -316,12 +378,14 @@ export class LinuxDoComposerAdapter {
     root: HTMLElement,
   ): {
     readonly cancel: () => void;
+    readonly fail: (outcome: LinuxDoComposerOpenOutcome) => void;
     readonly outcome: Promise<LinuxDoComposerOpenOutcome>;
   } {
     const window = this.#document.defaultView;
     if (!window) {
       return {
         cancel: () => undefined,
+        fail: () => undefined,
         outcome: Promise.resolve(
           failed('native-dispatch-failed', 'Linux DO composer confirmation is unavailable.', true),
         ),
@@ -429,6 +493,7 @@ export class LinuxDoComposerAdapter {
       cancel: () => {
         resolve(failed('aborted', 'The Reply action was cancelled.', true));
       },
+      fail: resolve,
       outcome,
     };
   }
