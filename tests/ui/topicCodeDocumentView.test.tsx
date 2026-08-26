@@ -232,7 +232,7 @@ describe('TopicCodeEditorSurface', () => {
       nativeRoots[0]?.querySelectorAll<HTMLElement>('[data-docode-editor-line]') ?? [],
       (element) => Number(element.dataset.docodeEditorLine),
     );
-    expect(firstContentLines).toEqual([8, 9, 10, 11, 12]);
+    expect(firstContentLines).toEqual([8, 9, 10, 11, 12, 13, 14, 15]);
     expect(nativeRoots[0]?.querySelector('p')?.dataset.docodeEditorLineKind).toBe('text');
     const nativeCode = nativeRoots[0]?.querySelector<HTMLElement>('code');
     const nativeKeyword = nativeCode?.querySelector<HTMLElement>('.hljs-keyword');
@@ -247,14 +247,14 @@ describe('TopicCodeEditorSurface', () => {
         view.container.querySelectorAll<HTMLElement>('[data-docode-line-number]'),
         (element) => Number(element.dataset.docodeLineNumber),
       ),
-    ).toEqual([8, 9, 10, 11, 12, 17, 18]);
+    ).toEqual([8, 9, 10, 11, 12, 13, 14, 15, 21, 22, 23, 24, 25]);
     const sourceImage = nativeRoots[0]?.querySelector<HTMLImageElement>('img');
     const imageTrigger = view.container.querySelector<HTMLElement>('[data-docode-image-trigger]');
     const imagePreview = view.container.querySelector<HTMLElement>('[data-docode-image-preview]');
     const fullscreen = view.container.querySelector<HTMLElement>('[data-docode-image-fullscreen]');
     expect(sourceImage?.hasAttribute('data-docode-image-source')).toBe(true);
     expect(imageTrigger?.textContent).toBe('image: image.png');
-    expect(imageTrigger?.dataset.docodeEditorLine).toBe('12');
+    expect(imageTrigger?.dataset.docodeEditorLine).toBe('14');
     expect(imageTrigger?.getAttribute('role')).toBe('button');
     expect(imageTrigger?.getAttribute('aria-label')).toBe('Preview image: image.png');
     expect(imagePreview?.hidden).toBe(true);
@@ -526,6 +526,327 @@ describe('TopicCodeEditorSurface', () => {
     expect(view.container.querySelectorAll('[data-docode-editor-line]')).toHaveLength(lineCount);
   });
 
+  it('renders reaction counts and boost bubbles as read-only source metadata', () => {
+    const { detail } = setupTopic();
+    const boostedDetail: ReadyTopicDetailDocument = {
+      ...detail,
+      replies: detail.replies.map((reply, index) =>
+        index === 0
+          ? {
+              ...reply,
+              boosts: [
+                {
+                  avatarUrl: 'https://cdn.ldstatic.com/user_avatar/linux.do/sunking/24/2.png',
+                  text: '前排合影',
+                  username: 'sunking',
+                },
+                { avatarUrl: null, text: '打卡', username: null },
+              ],
+              reactionCount: 333,
+            }
+          : reply,
+      ),
+    };
+    const view = render(
+      <div data-docode-workbench-root="unit-test">
+        <TopicCodeEditorSurface
+          document={boostedDetail}
+          nativeContentTransfer={new NativeContentTransfer(document)}
+          revision={1}
+        />
+      </div>,
+    );
+    const firstReply = view.container.querySelector<HTMLElement>('[data-post-number="1"]');
+    const secondReply = view.container.querySelector<HTMLElement>('[data-post-number="2"]');
+    if (!firstReply || !secondReply) throw new Error('Missing boost reply fixture.');
+
+    const reactionCount = firstReply.querySelector('.docode-topic-code__reaction-count');
+    expect(reactionCount?.textContent).toBe('♥333');
+    expect(
+      reactionCount
+        ?.querySelector('.docode-topic-code__reaction-heart')
+        ?.getAttribute('aria-hidden'),
+    ).toBe('true');
+    const boosts = firstReply.querySelector('.docode-topic-code__boosts-line');
+    expect(Number(boosts?.getAttribute('data-docode-editor-line'))).toBeGreaterThan(0);
+    expect(boosts?.getAttribute('data-docode-soft-wrap')).toBe('true');
+    expect(boosts?.querySelector('.docode-topic-code__boosts-label')?.textContent).toBe(
+      '// boosts(2):',
+    );
+    const bubbles = Array.from(boosts?.querySelectorAll('.docode-topic-code__boost') ?? []);
+    expect(
+      bubbles.map((bubble) => bubble.querySelector('.docode-topic-code__boost-text')?.textContent),
+    ).toEqual(['前排合影', '打卡']);
+    expect(boosts?.textContent).toContain('2 quick replies to post 1');
+    expect(bubbles[0]?.getAttribute('data-docode-tooltip')).toBeNull();
+    const preview = bubbles[0]?.querySelector('.docode-topic-code__boost-preview');
+    expect(preview?.getAttribute('aria-hidden')).toBe('true');
+    expect(preview?.querySelector('.docode-topic-code__boost-preview-user')?.textContent).toBe(
+      '@sunking',
+    );
+    expect(preview?.querySelector('.docode-topic-code__boost-preview-text')?.textContent).toBe(
+      '前排合影',
+    );
+    expect(preview?.querySelector('img')?.getAttribute('src')).toBe(
+      'https://cdn.ldstatic.com/user_avatar/linux.do/sunking/24/2.png',
+    );
+    expect(bubbles[1]?.querySelector('.docode-topic-code__boost-preview-user')).toBeNull();
+    expect(bubbles[0]?.querySelector('img')?.getAttribute('src')).toBe(
+      'https://cdn.ldstatic.com/user_avatar/linux.do/sunking/24/2.png',
+    );
+    expect(bubbles[1]?.querySelector('img')).toBeNull();
+    expect(secondReply.querySelector('.docode-topic-code__boosts-line')).toBeNull();
+    expect(secondReply.querySelector('.docode-topic-code__reaction-count')).toBeNull();
+  });
+
+  it('sends a boost from the inline editor and appends the confirmed bubble', async () => {
+    const { detail } = setupTopic();
+    const boostedDetail: ReadyTopicDetailDocument = {
+      ...detail,
+      replies: detail.replies.map((reply, index) =>
+        index === 0
+          ? {
+              ...reply,
+              boosts: [{ avatarUrl: null, text: '前排合影', username: 'sunking' }],
+              reactionCount: 0,
+            }
+          : reply,
+      ),
+    };
+    const firstReplyBlock = boostedDetail.replies[0];
+    if (!firstReplyBlock) throw new Error('Missing boosted reply.');
+    const onSendBoost = vi.fn((postId: number, raw: string, signal: AbortSignal) => {
+      void postId;
+      void raw;
+      void signal;
+      return Promise.resolve({
+        boost: {
+          avatarUrl: 'https://linux.do/user_avatar/linux.do/ruez/24/2.png',
+          text: '打卡',
+          username: 'ruez',
+        },
+        kind: 'created' as const,
+      });
+    });
+    const view = render(
+      <div data-docode-workbench-root="unit-test">
+        <TopicCodeEditorSurface
+          currentUsername="ruez"
+          document={boostedDetail}
+          nativeContentTransfer={new NativeContentTransfer(document)}
+          onSendBoost={onSendBoost}
+          revision={1}
+        />
+      </div>,
+    );
+    const boostsLine = view.container.querySelector<HTMLElement>(
+      '[data-post-number="1"] .docode-topic-code__boosts-line',
+    );
+    if (!boostsLine) throw new Error('Missing boosts line.');
+    const addButton = within(boostsLine).getByRole('button', { name: 'Boost post 1' });
+    fireEvent.click(addButton);
+    const input = within(boostsLine).getByRole('textbox', { name: 'Boost text for post 1' });
+    fireEvent.change(input, { target: { value: '打卡' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onSendBoost).toHaveBeenCalledTimes(1);
+    expect(onSendBoost.mock.calls[0]?.[0]).toBe(firstReplyBlock.id);
+    expect(onSendBoost.mock.calls[0]?.[1]).toBe('打卡');
+    expect(onSendBoost.mock.calls[0]?.[2]).toBeInstanceOf(AbortSignal);
+
+    await waitFor(() => {
+      expect(
+        within(boostsLine).queryAllByText('打卡', { selector: '.docode-topic-code__boost-text' })
+          .length,
+      ).toBe(1);
+    });
+    expect(boostsLine.querySelector('.docode-topic-code__boosts-label')?.textContent).toBe(
+      '// boosts(2):',
+    );
+    expect(within(boostsLine).queryByRole('button', { name: 'Boost post 1' })).toBeNull();
+    expect(within(boostsLine).queryByRole('textbox')).toBeNull();
+  });
+
+  it('hides the boost entry for signed-out readers and surfaces send failures inline', async () => {
+    const { detail } = setupTopic();
+    const boostedDetail: ReadyTopicDetailDocument = {
+      ...detail,
+      replies: detail.replies.map((reply, index) =>
+        index === 0
+          ? {
+              ...reply,
+              boosts: [{ avatarUrl: null, text: '前排合影', username: 'sunking' }],
+              reactionCount: 0,
+            }
+          : reply,
+      ),
+    };
+    const loggedOut = render(
+      <div data-docode-workbench-root="unit-test">
+        <TopicCodeEditorSurface
+          currentUsername={null}
+          document={boostedDetail}
+          nativeContentTransfer={new NativeContentTransfer(document)}
+          onSendBoost={vi.fn()}
+          revision={1}
+        />
+      </div>,
+    );
+    expect(loggedOut.container.querySelector('.docode-topic-code__boost-add')).toBeNull();
+    cleanup();
+
+    const alreadyBoosted = render(
+      <div data-docode-workbench-root="unit-test">
+        <TopicCodeEditorSurface
+          currentUsername="Sunking"
+          document={boostedDetail}
+          nativeContentTransfer={new NativeContentTransfer(document)}
+          onSendBoost={vi.fn()}
+          revision={1}
+        />
+      </div>,
+    );
+    expect(alreadyBoosted.container.querySelector('.docode-topic-code__boost-add')).toBeNull();
+    cleanup();
+
+    const onSendBoost = vi.fn(() =>
+      Promise.resolve({
+        code: 'rejected' as const,
+        kind: 'failed' as const,
+        message: 'Linux DO is rate limiting boosts. Try again shortly.',
+        retryable: true,
+      }),
+    );
+    const failing = render(
+      <div data-docode-workbench-root="unit-test">
+        <TopicCodeEditorSurface
+          currentUsername="ruez"
+          document={boostedDetail}
+          nativeContentTransfer={new NativeContentTransfer(document)}
+          onSendBoost={onSendBoost}
+          revision={1}
+        />
+      </div>,
+    );
+    const boostsLine = failing.container.querySelector<HTMLElement>(
+      '[data-post-number="1"] .docode-topic-code__boosts-line',
+    );
+    if (!boostsLine) throw new Error('Missing boosts line.');
+    fireEvent.click(within(boostsLine).getByRole('button', { name: 'Boost post 1' }));
+    const input = within(boostsLine).getByRole('textbox', { name: 'Boost text for post 1' });
+    fireEvent.change(input, { target: { value: '支持' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => {
+      expect(within(boostsLine).getByRole('alert').textContent).toBe(
+        'Linux DO is rate limiting boosts. Try again shortly.',
+      );
+    });
+    fireEvent.keyDown(within(boostsLine).getByRole('textbox'), { key: 'Escape' });
+    expect(within(boostsLine).queryByRole('textbox')).toBeNull();
+    expect(within(boostsLine).getByRole('button', { name: 'Boost post 1' })).toBeDefined();
+  });
+
+  it('grows a boosts line from the metadata entry on boost-less posts and keeps it after sending', async () => {
+    const { detail } = setupTopic();
+    const onSendBoost = vi.fn((postId: number, raw: string, signal: AbortSignal) => {
+      void postId;
+      void raw;
+      void signal;
+      return Promise.resolve({
+        boost: { avatarUrl: null, text: '前排', username: 'ruez' },
+        kind: 'created' as const,
+      });
+    });
+    const view = render(
+      <div data-docode-workbench-root="unit-test">
+        <TopicCodeEditorSurface
+          currentUserAvatarUrl="https://linux.do/user_avatar/linux.do/ruez/24/2.png"
+          currentUsername="ruez"
+          document={detail}
+          nativeContentTransfer={new NativeContentTransfer(document)}
+          onSendBoost={onSendBoost}
+          revision={1}
+        />
+      </div>,
+    );
+    const firstReply = view.container.querySelector<HTMLElement>('[data-post-number="1"]');
+    if (!firstReply) throw new Error('Missing first reply.');
+    expect(firstReply.querySelector('.docode-topic-code__boosts-line')).toBeNull();
+    const secondReplyCloseBefore = Number(
+      view.container
+        .querySelector('[data-post-number="2"] .docode-topic-code__reply-close')
+        ?.getAttribute('data-docode-editor-line'),
+    );
+
+    const metadataEntry = within(firstReply).getByRole('button', { name: 'Boost post 1' });
+    fireEvent.click(metadataEntry);
+    const boostsLine = firstReply.querySelector<HTMLElement>('.docode-topic-code__boosts-line');
+    if (!boostsLine) throw new Error('Boosts line did not materialize.');
+    expect(boostsLine.querySelector('.docode-topic-code__boosts-label')?.textContent).toBe(
+      '// boosts(0):',
+    );
+    expect(Number(boostsLine.getAttribute('data-docode-editor-line'))).toBeGreaterThan(0);
+    expect(
+      boostsLine.querySelector('.docode-topic-code__boost-editor-avatar')?.getAttribute('src'),
+    ).toBe('https://linux.do/user_avatar/linux.do/ruez/24/2.png');
+    const secondReplyCloseWhileEditing = Number(
+      view.container
+        .querySelector('[data-post-number="2"] .docode-topic-code__reply-close')
+        ?.getAttribute('data-docode-editor-line'),
+    );
+    expect(secondReplyCloseWhileEditing).toBe(secondReplyCloseBefore + 1);
+    expect(within(firstReply).queryByRole('button', { name: 'Boost post 1' })).toBeNull();
+
+    const input = within(boostsLine).getByRole('textbox', { name: 'Boost text for post 1' });
+    fireEvent.change(input, { target: { value: '前排' } });
+    fireEvent.click(within(boostsLine).getByRole('button', { name: 'Send boost for post 1' }));
+    await waitFor(() => {
+      expect(
+        within(boostsLine).queryAllByText('前排', { selector: '.docode-topic-code__boost-text' })
+          .length,
+      ).toBe(1);
+    });
+    expect(boostsLine.querySelector('.docode-topic-code__boosts-label')?.textContent).toBe(
+      '// boosts(1):',
+    );
+    expect(within(boostsLine).queryByRole('textbox')).toBeNull();
+    expect(firstReply.querySelector('.docode-topic-code__boosts-line')).not.toBeNull();
+  });
+
+  it('dissolves an empty grown boosts line on Escape or on blur without input', () => {
+    const { detail } = setupTopic();
+    const view = render(
+      <div data-docode-workbench-root="unit-test">
+        <TopicCodeEditorSurface
+          currentUsername="ruez"
+          document={detail}
+          nativeContentTransfer={new NativeContentTransfer(document)}
+          onSendBoost={vi.fn()}
+          revision={1}
+        />
+      </div>,
+    );
+    const firstReply = view.container.querySelector<HTMLElement>('[data-post-number="1"]');
+    if (!firstReply) throw new Error('Missing first reply.');
+
+    fireEvent.click(within(firstReply).getByRole('button', { name: 'Boost post 1' }));
+    let input = within(firstReply).getByRole('textbox', { name: 'Boost text for post 1' });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(firstReply.querySelector('.docode-topic-code__boosts-line')).toBeNull();
+    expect(within(firstReply).getByRole('button', { name: 'Boost post 1' })).toBeDefined();
+
+    fireEvent.click(within(firstReply).getByRole('button', { name: 'Boost post 1' }));
+    input = within(firstReply).getByRole('textbox', { name: 'Boost text for post 1' });
+    fireEvent.blur(input);
+    expect(firstReply.querySelector('.docode-topic-code__boosts-line')).toBeNull();
+
+    fireEvent.click(within(firstReply).getByRole('button', { name: 'Boost post 1' }));
+    input = within(firstReply).getByRole('textbox', { name: 'Boost text for post 1' });
+    fireEvent.change(input, { target: { value: '草稿' } });
+    fireEvent.blur(input);
+    expect(firstReply.querySelector('.docode-topic-code__boosts-line')).not.toBeNull();
+  });
+
   it('renders a real reply-floor source line and a safe VS Code-style hover preview', () => {
     const { detail, nativeRoots } = setupTopic();
     const linkedDetail: ReadyTopicDetailDocument = {
@@ -550,12 +871,12 @@ describe('TopicCodeEditorSurface', () => {
     expect(reference.textContent).toBe('return #1 · @alice;');
     expect(
       reference.closest('[data-docode-editor-line]')?.getAttribute('data-docode-editor-line'),
-    ).toBe('19');
+    ).toBe('26');
     expect(
       view.container
         .querySelector('[data-post-number="2"] .docode-topic-code__reply-close')
         ?.getAttribute('data-docode-editor-line'),
-    ).toBe('20');
+    ).toBe('27');
 
     fireEvent.pointerEnter(reference);
     const hover = within(document.body).getByRole('tooltip');
@@ -620,7 +941,7 @@ describe('TopicCodeEditorSurface', () => {
       view.container
         .querySelector('.docode-topic-code__reply-close')
         ?.getAttribute('data-docode-editor-line'),
-    ).toBe('14');
+    ).toBe('18');
 
     fireEvent.pointerMove(paragraph, { clientY: 125 });
     const overlay = view.container.querySelector<HTMLElement>(
@@ -647,14 +968,15 @@ describe('TopicCodeEditorSurface', () => {
 
   it('repositions native line numbers when rich content changes size', async () => {
     const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(window, 'ResizeObserver');
-    let notifyResize = (): void => undefined;
+    const resizeObservers: { callback: ResizeObserverCallback; instance: ResizeObserver }[] = [];
+    const notifyResize = (): void => {
+      for (const { callback, instance } of [...resizeObservers]) callback([], instance);
+    };
     Object.defineProperty(window, 'ResizeObserver', {
       configurable: true,
       value: class {
         constructor(callback: ResizeObserverCallback) {
-          notifyResize = () => {
-            callback([], this);
-          };
+          resizeObservers.push({ callback, instance: this });
         }
 
         disconnect(): void {

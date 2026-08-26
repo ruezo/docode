@@ -30,6 +30,7 @@ interface WorkbenchChromeProps {
 interface StatusFrameProps {
   readonly model: WorkbenchStatusModel;
   readonly onNavigate: (href: string) => void;
+  readonly onOpenTrustPanel?: (() => void) | undefined;
   readonly onSelectMode: (mode: WorkbenchPresentationMode) => void;
 }
 
@@ -609,7 +610,12 @@ function movePanelTabFocus(
   event.preventDefault();
 }
 
-export function StatusFrame({ model, onNavigate, onSelectMode }: StatusFrameProps) {
+export function StatusFrame({
+  model,
+  onNavigate,
+  onOpenTrustPanel,
+  onSelectMode,
+}: StatusFrameProps) {
   return (
     <footer
       aria-label="DOCode status"
@@ -636,6 +642,20 @@ export function StatusFrame({ model, onNavigate, onSelectMode }: StatusFrameProp
         >
           Linux DO
         </button>
+        {model.trust ? (
+          <button
+            aria-label={model.trust.ariaLabel}
+            className="docode-workbench__status-item docode-workbench__status-item--trust"
+            data-docode-tooltip={model.trust.title}
+            onClick={() => {
+              onOpenTrustPanel?.();
+            }}
+            type="button"
+          >
+            <Codicon name="verified" />
+            <span>{model.trust.label}</span>
+          </button>
+        ) : null}
         {model.encoding ? <StatusText item={model.encoding} kind="encoding" /> : null}
         {model.replies ? <StatusText item={model.replies} kind="replies" /> : null}
         {model.cursor ? <StatusText item={model.cursor} kind="cursor" /> : null}

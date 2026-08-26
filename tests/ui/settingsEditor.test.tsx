@@ -36,6 +36,10 @@ describe('Settings editor', () => {
       'System DefaultDefault',
       'Dark Modern',
       'Light Modern',
+      'Monokai',
+      'Dracula',
+      'GitHub Light',
+      'Solarized Dark',
     ]);
     fireEvent.click(screen.getByRole('option', { name: 'Light Modern' }));
     expect(onChange).toHaveBeenLastCalledWith({

@@ -159,6 +159,22 @@ describe('createWorkbenchStatusModel', () => {
     expect(complete.replies).toMatchObject({ label: 'Replies 24 · End' });
     expect(complete.replies?.title).toContain('end of this topic');
   });
+
+  it('surfaces the trust level badge only when a numeric level is known', () => {
+    const withTrust = createWorkbenchStatusModel({
+      ...baseInput('https://linux.do/latest'),
+      trustLevel: 2,
+    });
+    expect(withTrust.trust).toMatchObject({ label: 'TL2' });
+    expect(withTrust.trust?.title).toContain('build progress');
+
+    const withoutTrust = createWorkbenchStatusModel({
+      ...baseInput('https://linux.do/latest'),
+      trustLevel: null,
+    });
+    expect(withoutTrust.trust).toBeNull();
+    expect(createWorkbenchStatusModel(baseInput('https://linux.do/latest')).trust).toBeNull();
+  });
 });
 
 function baseInput(href: string) {

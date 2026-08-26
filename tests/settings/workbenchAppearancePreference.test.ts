@@ -3,9 +3,14 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 
 import {
   DEFAULT_WORKBENCH_APPEARANCE,
+  getWorkbenchThemeAppearance,
+  getWorkbenchThemeClassName,
   normalizeWorkbenchAppearancePreference,
   resolveWorkbenchTheme,
+  WORKBENCH_THEME_IDS,
+  WORKBENCH_THEMES,
   workbenchAppearancePreferenceStore,
+  type WorkbenchThemePreference,
 } from '../../src/settings/workbenchAppearancePreference';
 
 beforeEach(() => {
@@ -104,5 +109,38 @@ describe('workbench appearance preference', () => {
     expect(resolveWorkbenchTheme('system', 'dark')).toBe('dark');
     expect(resolveWorkbenchTheme('light', 'dark')).toBe('light');
     expect(resolveWorkbenchTheme('dark', 'light')).toBe('dark');
+    expect(resolveWorkbenchTheme('monokai', 'light')).toBe('monokai');
+    expect(resolveWorkbenchTheme('solarized-dark', 'light')).toBe('solarized-dark');
+  });
+
+  it('accepts stored named themes and maps every theme onto workbench classes', () => {
+    expect(
+      normalizeWorkbenchAppearancePreference({
+        ...DEFAULT_WORKBENCH_APPEARANCE,
+        theme: 'dracula',
+      }).theme,
+    ).toBe('dracula');
+    expect(
+      normalizeWorkbenchAppearancePreference({
+        ...DEFAULT_WORKBENCH_APPEARANCE,
+        theme: 'legacy-theme' as WorkbenchThemePreference,
+      }).theme,
+    ).toBe('system');
+    expect(getWorkbenchThemeClassName('dark')).toBe('docode-theme-dark-modern');
+    expect(getWorkbenchThemeClassName('light')).toBe(
+      'docode-theme-dark-modern docode-theme-light-modern',
+    );
+    expect(getWorkbenchThemeClassName('monokai')).toBe(
+      'docode-theme-dark-modern docode-theme-monokai',
+    );
+    expect(getWorkbenchThemeClassName('github-light')).toBe(
+      'docode-theme-dark-modern docode-theme-github-light',
+    );
+    expect(WORKBENCH_THEME_IDS).toHaveLength(6);
+    for (const themeId of WORKBENCH_THEME_IDS) {
+      expect(['dark', 'light']).toContain(getWorkbenchThemeAppearance(themeId));
+      expect(WORKBENCH_THEMES[themeId].topicListBodyColor).toMatch(/^#[\da-f]{6}$/u);
+      expect(WORKBENCH_THEMES[themeId].topicDetailBodyColor).toMatch(/^#[\da-f]{6}$/u);
+    }
   });
 });

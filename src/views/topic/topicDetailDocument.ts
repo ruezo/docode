@@ -13,6 +13,7 @@ import type {
   TopicExtraction,
   TopicIssueCode,
   TopicPostAuthor,
+  TopicPostBoost,
   TopicPostReadState,
   TopicTag,
 } from '../../linuxdo/topicAdapter';
@@ -69,6 +70,7 @@ export interface TopicReplyFloor {
 
 export interface TopicReplyDocumentBlock {
   readonly author: TopicPostAuthor | null;
+  readonly boosts: readonly TopicPostBoost[];
   readonly capabilities: TopicReplyCapabilityModel;
   readonly completeness: 'complete' | 'partial';
   readonly content: NativePostContent | null;
@@ -77,6 +79,7 @@ export interface TopicReplyDocumentBlock {
   readonly permalink: string;
   readonly publishedAt: string | null;
   readonly publishedLabel: string | null;
+  readonly reactionCount: number;
   readonly readState: TopicPostReadState;
   readonly replyToPostNumber: number | null;
   readonly topicId: number;
@@ -171,6 +174,7 @@ export function createTopicDetailDocument(
           : unavailableReplyCapabilities(detection),
         likeStateOverrides?.get(post.id),
       ),
+      boosts: post.boosts,
       completeness: post.completeness,
       content: post.content,
       floor: {
@@ -182,6 +186,7 @@ export function createTopicDetailDocument(
       permalink: post.permalink,
       publishedAt: post.publishedAt,
       publishedLabel: post.publishedLabel,
+      reactionCount: post.reactionCount,
       readState: post.readState,
       replyToPostNumber: post.replyToPostNumber,
       topicId: extraction.topic.id,

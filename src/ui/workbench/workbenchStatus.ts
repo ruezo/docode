@@ -44,6 +44,12 @@ export interface WorkbenchStatusText {
   readonly title: string;
 }
 
+export interface WorkbenchStatusTrust {
+  readonly ariaLabel: string;
+  readonly label: string;
+  readonly title: string;
+}
+
 export interface WorkbenchStatusModel {
   readonly activity: WorkbenchStatusIndicator | null;
   readonly category: WorkbenchStatusLink | null;
@@ -54,6 +60,7 @@ export interface WorkbenchStatusModel {
   readonly route: WorkbenchStatusLink;
   readonly replies: WorkbenchStatusText | null;
   readonly state: WorkbenchSurfaceState['kind'];
+  readonly trust: WorkbenchStatusTrust | null;
 }
 
 interface WorkbenchStatusTopic {
@@ -86,6 +93,7 @@ interface WorkbenchStatusInput {
     readonly status: 'complete' | 'error' | 'idle' | 'loading';
   } | null;
   readonly topic: WorkbenchStatusTopic | null;
+  readonly trustLevel?: number | null;
 }
 
 export function createWorkbenchStatusModel(input: WorkbenchStatusInput): WorkbenchStatusModel {
@@ -140,6 +148,14 @@ export function createWorkbenchStatusModel(input: WorkbenchStatusInput): Workben
       title: `Current Linux DO route: ${context.canonicalPath}`,
     },
     state: input.surfaceState.kind,
+    trust:
+      typeof input.trustLevel === 'number'
+        ? {
+            ariaLabel: `Trust level ${String(input.trustLevel)}. Open trust level build progress.`,
+            label: `TL${String(input.trustLevel)}`,
+            title: `Linux DO trust level ${String(input.trustLevel)}. Activate to open the build progress panel.`,
+          }
+        : null,
   };
 }
 

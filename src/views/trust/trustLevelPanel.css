@@ -1,0 +1,257 @@
+[data-docode-workbench-root] .docode-trust {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 18px 24px;
+  overflow: auto;
+  color: var(--docode-color-foreground);
+  background: var(--docode-color-editor-background);
+  font-family: var(--docode-font-family-ui);
+  font-size: 13px;
+}
+
+[data-docode-workbench-root] .docode-trust__state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: var(--docode-color-description-foreground);
+}
+
+[data-docode-workbench-root] .docode-trust__state p {
+  margin: 0;
+}
+
+[data-docode-workbench-root] .docode-trust__retry {
+  padding: 4px 14px;
+  border: 1px solid var(--docode-color-button-border);
+  border-radius: 2px;
+  color: var(--docode-color-button-foreground);
+  background: var(--docode-color-button-background);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+[data-docode-workbench-root] .docode-trust__retry:hover {
+  background: var(--docode-color-button-hover-background);
+}
+
+[data-docode-workbench-root] .docode-trust__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+
+[data-docode-workbench-root] .docode-trust__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: var(--docode-color-badge-foreground);
+  background: var(--docode-color-badge-background);
+  font-family: var(--docode-font-family-monospace);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+[data-docode-workbench-root] .docode-trust__badge .docode-codicon {
+  --docode-icon-size: 13px;
+}
+
+[data-docode-workbench-root] .docode-trust__title {
+  overflow: hidden;
+  margin: 0;
+  color: var(--docode-color-settings-header-foreground);
+  font-family: var(--docode-font-family-monospace);
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-trust__user {
+  color: var(--docode-color-description-foreground);
+  font-family: var(--docode-font-family-monospace);
+  font-size: 12px;
+}
+
+[data-docode-workbench-root] .docode-trust__refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--docode-corner-radius-medium);
+  color: var(--docode-color-icon-foreground);
+  background: transparent;
+  cursor: pointer;
+}
+
+[data-docode-workbench-root] .docode-trust__refresh:hover {
+  background: var(--docode-color-toolbar-hover-background);
+}
+
+[data-docode-workbench-root] .docode-trust__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--docode-color-border);
+  border-radius: var(--docode-corner-radius-medium);
+  background: var(--docode-color-sidebar-background);
+}
+
+[data-docode-workbench-root] .docode-trust__summary-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--docode-font-family-monospace);
+  font-size: 12px;
+}
+
+[data-docode-workbench-root] .docode-trust__summary-status[data-state='succeeded'] {
+  color: var(--docode-color-token-category);
+}
+
+[data-docode-workbench-root] .docode-trust__summary-track,
+[data-docode-workbench-root] .docode-trust__step-track {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--docode-color-editor-line-highlight-background);
+}
+
+[data-docode-workbench-root] .docode-trust__summary-fill,
+[data-docode-workbench-root] .docode-trust__step-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--docode-color-progress-bar-background);
+}
+
+[data-docode-workbench-root] .docode-trust__note {
+  margin: 0;
+  color: var(--docode-color-description-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+[data-docode-workbench-root] .docode-trust__steps {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--docode-color-border);
+  border-radius: var(--docode-corner-radius-medium);
+  list-style: none;
+}
+
+[data-docode-workbench-root] .docode-trust__step {
+  display: grid;
+  grid-template-columns: 24px minmax(140px, 1fr) minmax(120px, 2fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--docode-color-border);
+  font-family: var(--docode-font-family-monospace);
+  font-size: 12px;
+}
+
+[data-docode-workbench-root] .docode-trust__step:last-child {
+  border-bottom: 0;
+}
+
+[data-docode-workbench-root] .docode-trust__step-icon {
+  display: inline-flex;
+  color: var(--docode-color-description-foreground);
+}
+
+[data-docode-workbench-root] .docode-trust__step[data-complete='true'] .docode-trust__step-icon {
+  color: var(--docode-color-token-category);
+}
+
+[data-docode-workbench-root] .docode-trust__step[data-complete='true'] .docode-trust__step-fill {
+  background: var(--docode-color-token-category);
+}
+
+[data-docode-workbench-root] .docode-trust__step-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-docode-workbench-root] .docode-trust__step-value {
+  color: var(--docode-color-description-foreground);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+[data-docode-workbench-root] .docode-trust__stats-title {
+  margin: 6px 0 0;
+  color: var(--docode-color-token-comment);
+  font-family: var(--docode-font-family-monospace);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+[data-docode-workbench-root] .docode-trust__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+[data-docode-workbench-root] .docode-trust__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--docode-color-border);
+  border-radius: var(--docode-corner-radius-medium);
+  background: var(--docode-color-sidebar-background);
+}
+
+[data-docode-workbench-root] .docode-trust__stat dt {
+  color: var(--docode-color-description-foreground);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+[data-docode-workbench-root] .docode-trust__stat dd {
+  margin: 0;
+  color: var(--docode-color-foreground);
+  font-family: var(--docode-font-family-monospace);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-docode-workbench-root] .docode-trust__footer {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+[data-docode-workbench-root] .docode-trust__footer p {
+  margin: 0;
+  color: var(--docode-color-description-foreground);
+  font-size: 12px;
+}
+
+[data-docode-workbench-root] .docode-trust__footer a {
+  color: var(--docode-color-link-foreground);
+  text-decoration: none;
+}
+
+[data-docode-workbench-root] .docode-trust__footer a:hover {
+  text-decoration: underline;
+}

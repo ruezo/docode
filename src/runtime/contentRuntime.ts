@@ -26,6 +26,7 @@ import {
   type TopicStatusSummary,
 } from '../linuxdo/topicAdapter';
 import { LinuxDoViewStateObserver } from '../linuxdo/viewStateObserver';
+import { startAppManifestDisguise, stopAppManifestDisguise } from './appManifestDisguise';
 import { CleanupRegistry, type Cleanup } from './cleanupRegistry';
 import { GenerationClock } from './generationClock';
 import { hasPresentationOwnershipMarker, NativePresentation } from './nativePresentation';
@@ -170,6 +171,7 @@ export class ContentRuntime {
     this.#cleanups.add(() => {
       this.#tabDisguise.stop();
     });
+    startAppManifestDisguise(document);
     if (this.#routeObserver) {
       this.#routeObserver.subscribe((change) => {
         this.#viewStateObserver.refresh();
@@ -309,6 +311,7 @@ export async function bootstrapContentRuntime(options: BootstrapOptions): Promis
 }
 
 export function disableContentRuntime(document: Document): boolean {
+  stopAppManifestDisguise();
   const runtime = activeRuntimes.get(document);
   if (!runtime) return false;
 

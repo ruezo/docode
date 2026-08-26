@@ -25,6 +25,7 @@ const TOPIC_SELECTORS = {
 const IGNORED_CONTENT_CLASSES = [
   'cooked-selection-barrier',
   'docode-topic-code__image-trigger',
+  'docode-topic-code__scaffold-line',
 ] as const;
 export const DOCODE_PAGINATED_POST_ATTRIBUTE = 'data-docode-paginated-post';
 export const DOCODE_PAGINATED_CONTENT_ATTRIBUTE = 'data-docode-paginated-content';
@@ -99,8 +100,15 @@ export interface TopicPostAuthor {
 
 export type TopicPostReadState = 'unread' | 'unknown';
 
+export interface TopicPostBoost {
+  readonly avatarUrl: string | null;
+  readonly text: string;
+  readonly username: string | null;
+}
+
 export interface TopicPost {
   readonly author: TopicPostAuthor | null;
+  readonly boosts: readonly TopicPostBoost[];
   readonly completeness: 'complete' | 'partial';
   readonly content: NativePostContent | null;
   readonly id: number;
@@ -109,6 +117,7 @@ export interface TopicPost {
   readonly permalink: string;
   readonly publishedAt: string | null;
   readonly publishedLabel: string | null;
+  readonly reactionCount: number;
   readonly readState: TopicPostReadState;
   readonly replyToPostNumber: number | null;
 }
@@ -510,6 +519,7 @@ function extractPost(
 
   return {
     author,
+    boosts: extractPostBoosts(document, article, nativeOwner),
     completeness: author && content ? 'complete' : 'partial',
     content,
     id,
@@ -518,9 +528,60 @@ function extractPost(
     permalink: permalinkUrl.href,
     publishedAt: toIsoTimestamp(timeValue),
     publishedLabel: publishedLabel || null,
+    reactionCount: extractPostReactionCount(article, nativeOwner),
     readState,
     replyToPostNumber: readReplyToPostNumber(numberContainer),
   };
+}
+
+const POST_BOOST_LIMIT = 100;
+const POST_BOOST_TEXT_LIMIT = 120;
+
+function extractPostBoosts(
+  document: Document,
+  article: HTMLElement,
+  nativeOwner: HTMLElement | null,
+): readonly TopicPostBoost[] {
+  const host =
+    (nativeOwner?.querySelector('.discourse-boosts__list') ? nativeOwner : null) ??
+    (article.querySelector('.discourse-boosts__list') ? article : null);
+  if (!host) return [];
+  const boosts: TopicPostBoost[] = [];
+  for (const bubble of Array.from(
+    host.querySelectorAll('.discourse-boosts__list .discourse-boosts__bubble'),
+  ).slice(0, POST_BOOST_LIMIT)) {
+    const text = normalizeText(
+      bubble.querySelector('.discourse-boosts__cooked')?.textContent,
+    ).slice(0, POST_BOOST_TEXT_LIMIT);
+    if (!text) continue;
+    const avatarUrl = toHttpsImageUrl(
+      bubble.querySelector('img.avatar')?.getAttribute('src') ?? null,
+      document.location.href,
+    );
+    const username = normalizeText(
+      bubble.querySelector('[data-user-card]')?.getAttribute('data-user-card'),
+    );
+    boosts.push({ avatarUrl: avatarUrl?.href ?? null, text, username: username || null });
+  }
+  return boosts;
+}
+
+function extractPostReactionCount(article: HTMLElement, nativeOwner: HTMLElement | null): number {
+  const paginatedCount = Number(article.getAttribute('data-docode-reaction-count'));
+  if (Number.isSafeInteger(paginatedCount) && paginatedCount > 0) return paginatedCount;
+  const counter =
+    nativeOwner?.querySelector('.discourse-reactions-counter') ??
+    article.querySelector('.discourse-reactions-counter');
+  if (!counter) return 0;
+  const label = counter.getAttribute('aria-label') ?? '';
+  const labelMatch = /^(\d+)\s/u.exec(label);
+  if (labelMatch) {
+    const parsed = Number(labelMatch[1]);
+    if (Number.isSafeInteger(parsed) && parsed > 0) return parsed;
+  }
+  const text = normalizeText(counter.querySelector('.reactions-counter')?.textContent);
+  const parsedText = Number(text);
+  return Number.isSafeInteger(parsedText) && parsedText > 0 ? parsedText : 0;
 }
 
 function resolveCurrentNativePostOwner(
@@ -569,7 +630,7 @@ function extractAuthor(document: Document, article: HTMLElement): TopicPostAutho
     const route = url ? recognizeLinuxDoRoute(url) : null;
     if (!url || route?.kind !== 'user') continue;
     const displayName = normalizeText(link.textContent) || route.username;
-    const avatarUrl = toSupportedUrl(
+    const avatarUrl = toHttpsImageUrl(
       article
         .querySelector<HTMLImageElement>('.topic-avatar img.avatar[src], .topic-avatar img[src]')
         ?.getAttribute('src') ?? null,
@@ -676,6 +737,16 @@ function toSupportedUrl(href: string | null, baseHref: string): URL | null {
   try {
     const url = new URL(href, baseHref);
     return isLinuxDoLocation(url) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function toHttpsImageUrl(href: string | null, baseHref: string): URL | null {
+  if (!href) return null;
+  try {
+    const url = new URL(href, baseHref);
+    return url.protocol === 'https:' && !url.username && !url.password ? url : null;
   } catch {
     return null;
   }

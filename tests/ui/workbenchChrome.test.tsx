@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { recognizeLinuxDoRoute } from '../../src/linuxdo/routes';
+import type { WindowCommandClient } from '../../src/platform/browserWindowCommands';
 import type { WindowFullscreenClient } from '../../src/platform/browserWindowFullscreen';
 import { detectWorkbenchOperatingSystem } from '../../src/platform/workbenchPlatform';
 import { WorkbenchActivityBar } from '../../src/ui/workbench/WorkbenchActivityBar';
@@ -191,8 +192,12 @@ describe('platform workbench chrome', () => {
     expect(onOpenQuickOpen).toHaveBeenCalledOnce();
   });
 
-  it('renders the default Windows menu and keeps minimize and close as visual controls', () => {
-    const { container } = renderTitleBar('windows');
+  it('renders the default Windows menu and wires minimize and close to window commands', () => {
+    const closeWindow = vi.fn(() => Promise.resolve());
+    const minimizeWindow = vi.fn(() => Promise.resolve());
+    const { container } = renderTitleBar('windows', {
+      windowCommandClient: { closeWindow, minimizeWindow },
+    });
 
     expect(
       container.querySelector('.docode-workbench__titlebar')?.getAttribute('data-platform'),
@@ -205,13 +210,51 @@ describe('platform workbench chrome', () => {
       'codicon-chrome-maximize',
       'codicon-chrome-close',
     ]);
-    expect(controls[0]?.tagName).toBe('SPAN');
-    expect(controls[1]?.tagName).toBe('BUTTON');
-    expect(controls[2]?.tagName).toBe('SPAN');
-    expect(screen.queryByRole('button', { name: /minimize|close window/iu })).toBeNull();
+    expect(Array.from(controls, (control) => control.tagName)).toEqual([
+      'BUTTON',
+      'BUTTON',
+      'BUTTON',
+    ]);
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize Window' }));
+    expect(minimizeWindow).toHaveBeenCalledOnce();
+    expect(closeWindow).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Window' }));
+    expect(closeWindow).toHaveBeenCalledOnce();
     expect(
       screen.getByRole('button', { name: 'Full Screen unavailable' }).hasAttribute('disabled'),
     ).toBe(true);
+  });
+
+  it('wires the macOS red and yellow traffic lights to close and minimize', () => {
+    const closeWindow = vi.fn(() => Promise.resolve());
+    const minimizeWindow = vi.fn(() => Promise.resolve());
+    const { container } = renderTitleBar('mac', {
+      windowCommandClient: { closeWindow, minimizeWindow },
+    });
+
+    const lights = container.querySelectorAll('.docode-workbench__traffic-light');
+    expect(Array.from(lights, (light) => light.tagName)).toEqual(['BUTTON', 'BUTTON', 'BUTTON']);
+    fireEvent.click(screen.getByRole('button', { name: 'Close Window' }));
+    expect(closeWindow).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize Window' }));
+    expect(minimizeWindow).toHaveBeenCalledOnce();
+  });
+
+  it('reports window-command failures politely without breaking the titlebar', async () => {
+    const { container } = renderTitleBar('mac', {
+      windowCommandClient: {
+        closeWindow: () => Promise.reject(new Error('denied')),
+        minimizeWindow: () => Promise.reject(new Error('denied')),
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize Window' }));
+    expect((await screen.findByRole('status')).textContent).toBe('Unable to minimize the window.');
+    fireEvent.click(screen.getByRole('button', { name: 'Close Window' }));
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toBe('Unable to close the window.');
+    });
+    expect(container.querySelectorAll('.docode-workbench__traffic-light')).toHaveLength(3);
   });
 
   it('toggles browser-window full screen from the Windows maximize control', async () => {
@@ -447,6 +490,7 @@ function renderTitleBar(
     readonly onOpenQuickOpen?: () => void;
     readonly onTogglePanel?: () => void;
     readonly onToggleSidebar?: () => void;
+    readonly windowCommandClient?: WindowCommandClient;
     readonly windowFullscreenClient?: WindowFullscreenClient;
   } = {},
 ) {
@@ -461,6 +505,7 @@ function renderTitleBar(
         panelOpen
         {...(platform ? { platform } : {})}
         sidebarOpen
+        windowCommandClient={callbacks.windowCommandClient ?? noopWindowCommandClient}
         windowFullscreenClient={
           callbacks.windowFullscreenClient ?? unavailableWindowFullscreenClient
         }
@@ -468,6 +513,11 @@ function renderTitleBar(
     </div>,
   );
 }
+
+const noopWindowCommandClient: WindowCommandClient = {
+  closeWindow: () => Promise.resolve(),
+  minimizeWindow: () => Promise.resolve(),
+};
 
 const unavailableWindowFullscreenClient: WindowFullscreenClient = {
   getState: () => Promise.resolve({ active: false, supported: false }),

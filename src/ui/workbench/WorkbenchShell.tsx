@@ -25,6 +25,9 @@ import {
   getWorkbenchShortcutLabels,
   installWorkbenchKeybindings,
 } from '../../keybindings/keybindingCoordinator';
+import { installVimNavigation } from '../../keybindings/vimNavigation';
+import type { TrustLevelLoadOutcome } from '../../linuxdo/trustLevelLoader';
+import { TrustLevelPanel, type TrustLevelPanelState } from '../../views/trust/TrustLevelPanel';
 import type { LinuxDoNavigationOutcome } from '../../linuxdo/navigationAdapter';
 import type {
   LinuxDoComposerFeedback,
@@ -91,6 +94,7 @@ import type { WorkbenchSurfaceState } from './workbenchSurfaceState';
 import { createWorkbenchStatusModel } from './workbenchStatus';
 import {
   TopicCodeEditorSurface,
+  type SendTopicBoost,
   type TopicCursorPosition,
   type ReadyTopicDetailDocument,
   type TopicReplyFocusRequest,
@@ -116,6 +120,7 @@ import type { TopicScrollRequest, TopicViewportState } from '../../views/topic/t
 import {
   TopicListEditorSurface,
   type ReadyTopicListDocument,
+  type TopicListKeyboardRequest,
   type TopicListScrollRequest,
 } from '../../views/topicList/TopicListDocumentView';
 import {
@@ -135,6 +140,7 @@ import {
 } from '../../settings/workbenchLayoutPreference';
 import {
   DEFAULT_WORKBENCH_APPEARANCE,
+  getWorkbenchThemeClassName,
   resolveWorkbenchTheme,
   type WorkbenchAppearancePreference,
 } from '../../settings/workbenchAppearancePreference';
@@ -296,6 +302,9 @@ interface WorkbenchShellProps {
   readonly onRemoveHistoryEntry?:
     ((viewId: string) => Promise<readonly BrowseHistoryEntry[]>) | undefined;
   readonly onClearHistory?: (() => Promise<readonly BrowseHistoryEntry[]>) | undefined;
+  readonly currentUserAvatarUrl?: string | null;
+  readonly onLoadTrustLevel?: ((signal: AbortSignal) => Promise<TrustLevelLoadOutcome>) | undefined;
+  readonly onSendBoost?: SendTopicBoost | undefined;
   readonly terminalUsername: string | null;
   readonly unreadNotifications?: number;
   readonly viewRevision: number;
@@ -336,6 +345,9 @@ export function WorkbenchShell({
   onRecordHistory,
   onRemoveHistoryEntry,
   onClearHistory,
+  currentUserAvatarUrl = null,
+  onLoadTrustLevel,
+  onSendBoost,
   terminalUsername,
   unreadNotifications = 0,
   viewRevision,
@@ -344,6 +356,40 @@ export function WorkbenchShell({
   const [appearancePersistenceError, setAppearancePersistenceError] = useState<string | null>(null);
   const [appearancePersistencePending, setAppearancePersistencePending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [trustPanelOpen, setTrustPanelOpen] = useState(false);
+  const [trustLevelState, setTrustLevelState] = useState<TrustLevelPanelState>({
+    status: 'loading',
+  });
+  const [trustLevelRefresh, setTrustLevelRefresh] = useState(0);
+  useEffect(() => {
+    if (!onLoadTrustLevel) return;
+    const controller = new AbortController();
+    void onLoadTrustLevel(controller.signal).then(
+      (outcome) => {
+        if (controller.signal.aborted || outcome.kind === 'aborted') return;
+        setTrustLevelState(
+          outcome.kind === 'ready'
+            ? { snapshot: outcome.snapshot, status: 'ready' }
+            : { status: outcome.kind },
+        );
+      },
+      () => {
+        if (controller.signal.aborted) return;
+        setTrustLevelState({ status: 'unavailable' });
+      },
+    );
+    return () => {
+      controller.abort();
+    };
+  }, [onLoadTrustLevel, trustLevelRefresh]);
+  const refreshTrustLevel = useCallback(() => {
+    setTrustLevelState({ status: 'loading' });
+    setTrustLevelRefresh((current) => current + 1);
+  }, []);
+  const openTrustPanel = useCallback(() => {
+    setSettingsOpen(false);
+    setTrustPanelOpen(true);
+  }, []);
   const [systemTheme, setSystemTheme] = useState<'dark' | 'light'>(() => getSystemTheme());
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight);
   const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
@@ -1030,11 +1076,11 @@ export function WorkbenchShell({
       '[data-docode-workbench-root]',
     );
     if (!workbenchRoot) return;
-    workbenchRoot.classList.add('docode-theme-dark-modern');
-    workbenchRoot.classList.toggle('docode-theme-light-modern', resolvedTheme === 'light');
+    const themeClassNames = getWorkbenchThemeClassName(resolvedTheme).split(' ');
+    workbenchRoot.classList.add(...themeClassNames);
     workbenchRoot.dataset.colorTheme = resolvedTheme;
     return () => {
-      workbenchRoot.classList.remove('docode-theme-dark-modern', 'docode-theme-light-modern');
+      workbenchRoot.classList.remove(...themeClassNames);
       delete workbenchRoot.dataset.colorTheme;
     };
   }, [resolvedTheme]);
@@ -1409,7 +1455,15 @@ export function WorkbenchShell({
     const doc = globalThis.document;
     const route = recognizeLinuxDoRoute(doc.location.href);
     const detection = detectLinuxDoCapabilities(doc, route);
-    const lines = [`build ${DOCODE_BUILD_TAG}`, `route ${route.kind} ${doc.location.pathname}`];
+    const trustLine =
+      trustLevelState.status === 'ready'
+        ? `trust TL${String(trustLevelState.snapshot.trustLevel)} @${trustLevelState.snapshot.username}`
+        : `trust ${trustLevelState.status}`;
+    const lines = [
+      `build ${DOCODE_BUILD_TAG}`,
+      `route ${route.kind} ${doc.location.pathname}`,
+      trustLine,
+    ];
     if (detection.state !== 'ready') {
       lines.push(`capabilities ${detection.state}`);
       return lines.join('\n');
@@ -1437,7 +1491,7 @@ export function WorkbenchShell({
       `diagnostics ${detection.diagnostics.map(({ code }) => code).join(',') || 'none'}`,
     );
     return lines.join('\n');
-  }, []);
+  }, [trustLevelState]);
   const commandRegistry = useMemo(
     () =>
       createWorkbenchCommandRegistry({
@@ -1577,6 +1631,71 @@ export function WorkbenchShell({
       }),
     [commandContext, commandRegistry, context.supported, keybindingPlatform],
   );
+  const [topicListKeyboardRequest, setTopicListKeyboardRequest] =
+    useState<TopicListKeyboardRequest | null>(null);
+  useEffect(
+    () =>
+      installVimNavigation({
+        document,
+        enabled: () => context.supported,
+        onAction: (action) => {
+          if (action === 'quick-open') {
+            void commandRegistry.dispatchById({
+              arguments: [],
+              commandId: QUICK_OPEN_COMMAND_ID,
+              context: commandContext,
+              source: 'keybinding',
+            });
+            return;
+          }
+          if (readyTopicDetail) {
+            const replies = readyTopicDetail.replies;
+            if (replies.length === 0) return;
+            const currentPostId =
+              topicPosition?.topicId === readyTopicDetail.topic.id
+                ? topicPosition.evidence.postId
+                : null;
+            const currentIndex = replies.findIndex(({ id }) => id === currentPostId);
+            const targetIndex =
+              action === 'first-post'
+                ? 0
+                : action === 'last-post'
+                  ? replies.length - 1
+                  : currentIndex === -1
+                    ? 0
+                    : action === 'next-post'
+                      ? Math.min(currentIndex + 1, replies.length - 1)
+                      : Math.max(currentIndex - 1, 0);
+            const target = replies[targetIndex];
+            if (target && target.id !== currentPostId) navigateTopicPost(target.id);
+            return;
+          }
+          if (readyTopicList) {
+            const kind =
+              action === 'first-post'
+                ? 'first'
+                : action === 'last-post'
+                  ? 'last'
+                  : action === 'next-post'
+                    ? 'next'
+                    : 'previous';
+            setTopicListKeyboardRequest((current) => ({
+              kind,
+              sequence: (current?.sequence ?? 0) + 1,
+            }));
+          }
+        },
+      }),
+    [
+      commandContext,
+      commandRegistry,
+      context.supported,
+      navigateTopicPost,
+      readyTopicDetail,
+      readyTopicList,
+      topicPosition,
+    ],
+  );
   const executeTerminalCommand = useCallback(
     (input: string, signal: AbortSignal) =>
       commandRegistry.dispatch({ context: commandContext, input, signal, source: 'terminal' }),
@@ -1646,6 +1765,7 @@ export function WorkbenchShell({
         ? 'Linux DO did not return the next topic page. Scroll near the end to retry or use the original site.'
         : null,
     topicPagination: activeTopicPagination ? { status: topicPaginationStatus } : null,
+    trustLevel: trustLevelState.status === 'ready' ? trustLevelState.snapshot.trustLevel : null,
     topic: readyTopicDetail
       ? {
           category: readyTopicDetail.topic.category,
@@ -1682,7 +1802,7 @@ export function WorkbenchShell({
     <div
       ref={workbenchElement}
       aria-label="DOCode workbench"
-      className={`docode-workbench docode-theme-dark-modern${resolvedTheme === 'light' ? ' docode-theme-light-modern' : ''}`}
+      className={`docode-workbench ${getWorkbenchThemeClassName(resolvedTheme)}`}
       data-appearance-storage-error={appearancePersistenceError ? 'true' : undefined}
       data-appearance-storage-pending={appearancePersistencePending ? 'true' : 'false'}
       data-color-theme={resolvedTheme}
@@ -1775,6 +1895,7 @@ export function WorkbenchShell({
           }
           onOpenSettings={() => {
             setOverlay(null);
+            setTrustPanelOpen(false);
             setSettingsOpen(true);
           }}
           settingsOpen={settingsOpen}
@@ -1893,7 +2014,7 @@ export function WorkbenchShell({
           <main
             aria-label="Editor region"
             className="docode-workbench__editor"
-            data-settings-open={settingsOpen ? 'true' : 'false'}
+            data-settings-open={settingsOpen || trustPanelOpen ? 'true' : 'false'}
           >
             {!settingsOpen &&
             (surfaceState.kind === 'loading' ||
@@ -1935,6 +2056,21 @@ export function WorkbenchShell({
                     className="docode-workbench__settings-tab-close"
                     onClick={() => {
                       setSettingsOpen(false);
+                    }}
+                    type="button"
+                  >
+                    <Codicon name="close" />
+                  </button>
+                </div>
+              ) : trustPanelOpen ? (
+                <div className="docode-workbench__settings-tab" data-active="true">
+                  <Codicon name="verified" />
+                  <span className="docode-workbench__settings-tab-label">Trust Level</span>
+                  <button
+                    aria-label="Close Trust Level"
+                    className="docode-workbench__settings-tab-close"
+                    onClick={() => {
+                      setTrustPanelOpen(false);
                     }}
                     type="button"
                   >
@@ -2025,6 +2161,8 @@ export function WorkbenchShell({
                 preference={appearance}
                 resolvedTheme={resolvedTheme}
               />
+            ) : trustPanelOpen ? (
+              <TrustLevelPanel onRefresh={refreshTrustLevel} state={trustLevelState} />
             ) : (
               <>
                 <WorkbenchBreadcrumbs
@@ -2037,6 +2175,7 @@ export function WorkbenchShell({
                     <TopicListEditorSurface
                       document={readyTopicList}
                       hasMoreTopics={hasMoreTopics}
+                      keyboardRequest={topicListKeyboardRequest}
                       loadingMoreTopics={loadingMoreTopics}
                       onNavigateTopic={navigateTopicFromList}
                       onRequestMoreTopics={requestMoreTopics}
@@ -2062,11 +2201,14 @@ export function WorkbenchShell({
                       onRequestMorePosts={requestMorePosts}
                       onResolvePostCommand={resolvePostCommand}
                       onRunPostCommand={runPostCommand}
+                      onSendBoost={onSendBoost}
                       onViewportChange={trackTopicViewport}
                       paginationStatus={activeTopicPagination?.status ?? 'idle'}
                       revision={viewRevision}
                       scrollRequest={editorScrollRequest}
                       showAuthorAvatars={appearance.showTopicAvatars}
+                      currentUserAvatarUrl={currentUserAvatarUrl}
+                      currentUsername={terminalUsername}
                     />
                   ) : context.route.kind === 'search' ? (
                     <SearchDocumentView
@@ -2276,6 +2418,7 @@ export function WorkbenchShell({
       <StatusFrame
         model={statusModel}
         onNavigate={navigateFromStatus}
+        onOpenTrustPanel={openTrustPanel}
         onSelectMode={(mode) => {
           selectReadingMode(mode);
         }}

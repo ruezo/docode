@@ -6,7 +6,72 @@ import {
   normalizeBrowseHistoryLimit,
 } from './browseHistoryStore';
 
-export type WorkbenchThemePreference = 'dark' | 'light' | 'system';
+export type WorkbenchThemeId =
+  'dark' | 'dracula' | 'github-light' | 'light' | 'monokai' | 'solarized-dark';
+
+export type WorkbenchThemePreference = WorkbenchThemeId | 'system';
+
+interface WorkbenchThemeDefinition {
+  readonly appearance: 'dark' | 'light';
+  readonly className: string | null;
+  readonly label: string;
+  readonly topicDetailBodyColor: string;
+  readonly topicListBodyColor: string;
+}
+
+export const WORKBENCH_THEMES: Readonly<Record<WorkbenchThemeId, WorkbenchThemeDefinition>> = {
+  dark: {
+    appearance: 'dark',
+    className: null,
+    label: 'Dark Modern',
+    topicDetailBodyColor: '#ce9178',
+    topicListBodyColor: '#dcdcaa',
+  },
+  dracula: {
+    appearance: 'dark',
+    className: 'docode-theme-dracula',
+    label: 'Dracula',
+    topicDetailBodyColor: '#f1fa8c',
+    topicListBodyColor: '#50fa7b',
+  },
+  'github-light': {
+    appearance: 'light',
+    className: 'docode-theme-github-light',
+    label: 'GitHub Light',
+    topicDetailBodyColor: '#0a3069',
+    topicListBodyColor: '#6639ba',
+  },
+  light: {
+    appearance: 'light',
+    className: 'docode-theme-light-modern',
+    label: 'Light Modern',
+    topicDetailBodyColor: '#a31515',
+    topicListBodyColor: '#795e26',
+  },
+  monokai: {
+    appearance: 'dark',
+    className: 'docode-theme-monokai',
+    label: 'Monokai',
+    topicDetailBodyColor: '#e6db74',
+    topicListBodyColor: '#a6e22e',
+  },
+  'solarized-dark': {
+    appearance: 'dark',
+    className: 'docode-theme-solarized-dark',
+    label: 'Solarized Dark',
+    topicDetailBodyColor: '#2aa198',
+    topicListBodyColor: '#b58900',
+  },
+};
+
+export const WORKBENCH_THEME_IDS = Object.keys(WORKBENCH_THEMES) as readonly WorkbenchThemeId[];
+
+export function getWorkbenchThemeClassName(theme: WorkbenchThemeId): string {
+  const themeClassName = WORKBENCH_THEMES[theme].className;
+  return themeClassName === null
+    ? 'docode-theme-dark-modern'
+    : `docode-theme-dark-modern ${themeClassName}`;
+}
 
 export interface WorkbenchAppearancePreference {
   readonly commandCenterLabel: string;
@@ -79,9 +144,13 @@ export function normalizeWorkbenchAppearancePreference(
 
 export function resolveWorkbenchTheme(
   preference: WorkbenchThemePreference,
-  systemTheme: Exclude<WorkbenchThemePreference, 'system'>,
-): Exclude<WorkbenchThemePreference, 'system'> {
+  systemTheme: 'dark' | 'light',
+): WorkbenchThemeId {
   return preference === 'system' ? systemTheme : preference;
+}
+
+export function getWorkbenchThemeAppearance(theme: WorkbenchThemeId): 'dark' | 'light' {
+  return WORKBENCH_THEMES[theme].appearance;
 }
 
 function isWorkbenchAppearancePreference(value: unknown): value is WorkbenchAppearancePreference {
@@ -107,7 +176,7 @@ function isHistoryLimit(value: unknown): value is number {
 }
 
 function isWorkbenchThemePreference(value: unknown): value is WorkbenchThemePreference {
-  return value === 'system' || value === 'dark' || value === 'light';
+  return value === 'system' || WORKBENCH_THEME_IDS.includes(value as WorkbenchThemeId);
 }
 
 function isHexColor(value: unknown): value is string {

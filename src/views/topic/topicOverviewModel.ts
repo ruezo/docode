@@ -11,6 +11,8 @@ import {
 } from './topicDocLineLayout';
 import { createTopicLineLayout, TOPIC_HEADER_LINES, type TopicLineLayout } from './topicLineLayout';
 import { summarizeNativeContentLines } from './nativeContentPresentation';
+import { readNativeOwnText } from './nativeContentLines';
+import { summarizeReplyCodeLines } from './replyCodePlan';
 
 export type TopicOverviewState = TopicDetailDocument['state'];
 
@@ -330,7 +332,7 @@ function createMinimapLines(
         ),
       ]),
     );
-    summarizeNativeContentLines(reply.content).forEach((summary, index) => {
+    summarizeReplyCodeLines(reply.content, reply.id, false).forEach((summary, index) => {
       lines.push(
         minimapLine(
           `post:${String(reply.id)}:content:${String(index)}`,
@@ -339,7 +341,11 @@ function createMinimapLines(
           summary.indent + 2,
           [
             token(
-              summary.kind === 'text' || summary.kind === 'blank' ? 'string' : summary.kind,
+              summary.kind === 'text' || summary.kind === 'blank'
+                ? 'string'
+                : summary.kind === 'scaffold'
+                  ? 'keyword'
+                  : summary.kind,
               summary.text,
             ),
           ],
@@ -411,7 +417,12 @@ function createDocMinimapLines(
           layout.contentStart + index,
           reply.id,
           summary.indent,
-          [token(summary.kind === 'blank' ? 'text' : summary.kind, summary.text)],
+          [
+            token(
+              summary.kind === 'blank' || summary.kind === 'scaffold' ? 'text' : summary.kind,
+              summary.text,
+            ),
+          ],
         ),
       );
     });
@@ -476,7 +487,7 @@ function extractHeadings(reply: TopicReplyDocumentBlock): TopicOutlineHeading[] 
   if (!reply.content) return [];
   return reply.content.blocks.flatMap((block, blockIndex) => {
     if (block.kind !== 'heading') return [];
-    const label = normalizeText(block.element.textContent);
+    const label = normalizeText(readNativeOwnText(block.element));
     if (!label) return [];
     const level = headingLevel(block.element);
     return [

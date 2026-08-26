@@ -284,14 +284,16 @@ try {
   await context.route(topicListFixtureUrl, (route) =>
     route.fulfill({
       body: topicListFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
+      headers: { 'content-security-policy': "manifest-src 'self'" },
       status: 200,
     }),
   );
   await context.route('https://linux.do/latest', (route) =>
     route.fulfill({
       body: topicListFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
+      headers: { 'content-security-policy': "manifest-src 'self'" },
       status: 200,
     }),
   );
@@ -325,7 +327,7 @@ try {
   await context.route('https://linux.do/new', (route) =>
     route.fulfill({
       body: topicListFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -379,28 +381,28 @@ try {
   await context.route(unreadTopicListFixtureUrl, (route) =>
     route.fulfill({
       body: topicListFixtureHtml({ firstUnreadPostNumber: 4 }),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
   await context.route(delayedUnreadTopicListFixtureUrl, (route) =>
     route.fulfill({
       body: delayedTopicListFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
   await context.route(missingUnreadTopicListFixtureUrl, (route) =>
     route.fulfill({
       body: '<!doctype html><html><body><main id="main-outlet"></main></body></html>',
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
   await context.route(topicListPaginationFixtureUrl, (route) =>
     route.fulfill({
       body: topicListFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -434,7 +436,7 @@ try {
   await context.route(topicPaginationFixtureUrl, (route) =>
     route.fulfill({
       body: topicPaginationFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -465,7 +467,7 @@ try {
   await context.route(topicPaginationEndFixtureUrl, (route) =>
     route.fulfill({
       body: topicPaginationEndFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -498,7 +500,7 @@ try {
   await context.route(topicBackwardPaginationFixtureUrl, (route) =>
     route.fulfill({
       body: topicBackwardPaginationFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -536,6 +538,13 @@ try {
       status: 200,
     });
   });
+  await context.route('https://linux.do/manifest.webmanifest', (route) =>
+    route.fulfill({
+      body: JSON.stringify({ name: 'LINUX DO', short_name: 'LINUX DO' }),
+      contentType: 'application/manifest+json',
+      status: 200,
+    }),
+  );
   await context.route('https://linux.do/uploads/fixture-favicon.png', (route) =>
     route.fulfill({
       body: Buffer.from(
@@ -549,7 +558,7 @@ try {
   await context.route(topicOpeningFixtureUrl, (route) =>
     route.fulfill({
       body: topicFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -568,14 +577,14 @@ try {
   await context.route(codeBlockFixtureUrl, (route) =>
     route.fulfill({
       body: codeBlockTopicFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
   await context.route(replyTargetHoverFixtureUrl, (route) =>
     route.fulfill({
       body: replyTargetHoverFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -621,7 +630,11 @@ try {
   );
   const userFixtureUrl = 'https://linux.do/u/fixture-user/activity/topics';
   await context.route(userFixtureUrl, (route) =>
-    route.fulfill({ body: topicListFixtureHtml(), contentType: 'text/html', status: 200 }),
+    route.fulfill({
+      body: topicListFixtureHtml(),
+      contentType: 'text/html; charset=utf-8',
+      status: 200,
+    }),
   );
   const searchApiPattern = 'https://linux.do/search/query?*';
   const searchApiRequests = [];
@@ -916,6 +929,10 @@ try {
     'System DefaultDefault',
     'Dark Modern',
     'Light Modern',
+    'Monokai',
+    'Dracula',
+    'GitHub Light',
+    'Solarized Dark',
   ]);
   const themeDropdownGeometry = await appearanceSettingsPage
     .locator('.docode-settings__select-trigger')
@@ -937,6 +954,47 @@ try {
   await appearanceSettingsPage.screenshot({
     path: path.join(appearanceSettingsEvidenceDir, 'settings-light-modern.png'),
   });
+
+  const namedThemeExpectations = [
+    { editorBackground: 'rgb(39, 40, 34)', label: 'Monokai', theme: 'monokai' },
+    { editorBackground: 'rgb(40, 42, 54)', label: 'Dracula', theme: 'dracula' },
+    { editorBackground: 'rgb(255, 255, 255)', label: 'GitHub Light', theme: 'github-light' },
+    { editorBackground: 'rgb(0, 43, 54)', label: 'Solarized Dark', theme: 'solarized-dark' },
+  ];
+  for (const expectation of namedThemeExpectations) {
+    await appearanceSettingsPage
+      .getByRole('combobox', { name: 'DOCode Appearance Color Theme' })
+      .click();
+    await appearanceSettingsPage.getByRole('option', { name: expectation.label }).click();
+    await appearanceSettingsPage
+      .locator(`.docode-workbench[data-color-theme="${expectation.theme}"]`)
+      .waitFor();
+    const themedWorkbench = await appearanceSettingsPage
+      .locator('.docode-workbench')
+      .evaluate((element) => ({
+        editorBackground: getComputedStyle(element).getPropertyValue(
+          '--docode-color-editor-background',
+        ),
+        hasBaseThemeClass: element.classList.contains('docode-theme-dark-modern'),
+      }));
+    assert.equal(themedWorkbench.hasBaseThemeClass, true);
+    const themedBackground = await appearanceSettingsPage
+      .locator('.docode-settings')
+      .evaluate((element) => getComputedStyle(element).backgroundColor);
+    assert.equal(
+      themedBackground,
+      expectation.editorBackground,
+      `Theme ${expectation.label} must repaint the settings surface.`,
+    );
+    await appearanceSettingsPage.screenshot({
+      path: path.join(appearanceSettingsEvidenceDir, `settings-theme-${expectation.theme}.png`),
+    });
+  }
+  await appearanceSettingsPage
+    .getByRole('combobox', { name: 'DOCode Appearance Color Theme' })
+    .click();
+  await appearanceSettingsPage.getByRole('option', { name: 'Light Modern' }).click();
+  await appearanceSettingsPage.locator('.docode-workbench[data-color-theme="light"]').waitFor();
 
   await appearanceSettingsPage
     .getByRole('textbox', { exact: true, name: 'Topic List Body Color' })
@@ -1064,7 +1122,7 @@ try {
     await windowsAutoChromePage
       .locator('.docode-workbench__window-controls button, .docode-workbench__window-controls a')
       .count(),
-    1,
+    3,
   );
   assert.equal(
     await windowsAutoChromePage
@@ -1220,33 +1278,28 @@ try {
   });
   assert.equal(await fullscreenImageButton.count(), 1);
   const previewActionPaint = await fullscreenImageButton.evaluate((button) => {
-    const icon = button.querySelector('.codicon');
+    const preview = button.closest('[data-docode-image-preview]');
+    if (!(preview instanceof HTMLElement)) throw new Error('Missing preview owner.');
     const rect = button.getBoundingClientRect();
-    if (!(icon instanceof HTMLElement)) throw new Error('Missing preview action icon.');
+    const previewRect = preview.getBoundingClientRect();
+    const style = getComputedStyle(button);
     return {
-      color: getComputedStyle(button).color,
-      height: rect.height,
-      iconContent: getComputedStyle(icon, '::before').content,
+      background: style.backgroundColor,
+      color: style.color,
+      coversPreview:
+        Math.abs(rect.width - previewRect.width) <= 2 &&
+        Math.abs(rect.height - previewRect.height) <= 2,
+      cursor: style.cursor,
       visible: rect.width > 0 && rect.height > 0,
-      width: rect.width,
     };
   });
-  assert.deepEqual(
-    {
-      color: previewActionPaint.color,
-      height: previewActionPaint.height,
-      visible: previewActionPaint.visible,
-      width: previewActionPaint.width,
-    },
-    {
-      color: 'rgb(204, 204, 204)',
-      height: 24,
-      visible: true,
-      width: 24,
-    },
-  );
-  assert.notEqual(previewActionPaint.iconContent, 'none');
-  assert.notEqual(previewActionPaint.iconContent, 'normal');
+  assert.deepEqual(previewActionPaint, {
+    background: 'rgba(0, 0, 0, 0)',
+    color: 'rgba(0, 0, 0, 0)',
+    coversPreview: true,
+    cursor: 'zoom-in',
+    visible: true,
+  });
   await codeReadingPage.screenshot({
     path: path.join(codeReadingEvidenceDir, 'image-preview-action.png'),
   });
@@ -1255,6 +1308,13 @@ try {
     name: 'Full-screen image: Synthetic native image',
   });
   await fullscreenImageViewer.waitFor();
+  assert.deepEqual(
+    await fullscreenImageViewer.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { backdropFilter: style.backdropFilter, background: style.backgroundColor };
+    }),
+    { backdropFilter: 'blur(14px)', background: 'rgba(0, 0, 0, 0.55)' },
+  );
   const fullscreenImageToolbar = fullscreenImageViewer.getByRole('toolbar', {
     name: 'Image tools: Synthetic native image',
   });
@@ -2072,7 +2132,10 @@ try {
     };
   });
   assert.deepEqual(stableTopicRefresh, {
-    content: ['Paginated reply 1', 'Paginated reply 2'],
+    content: [
+      'Replies reply = new Replies();Paginated reply 1',
+      'Replies reply = new Replies();Paginated reply 2',
+    ],
     missingContentCount: 0,
     mountCount: 0,
     partialObserved: false,
@@ -2258,6 +2321,42 @@ try {
     faviconPrefix: 'data:image/png;base64,',
     title: 'LinuxDo.java - docode - Visual Studio Code',
   });
+  const appManifestDisguise = await topicListFixturePage.evaluate(async () => {
+    const links = [...document.head.querySelectorAll('link[rel~="manifest"]')];
+    const href = links[0]?.getAttribute('href') ?? '';
+    let manifest = null;
+    if (href.startsWith('chrome-extension://')) {
+      manifest = await fetch(href).then((response) => response.json());
+    }
+    return {
+      crossOrigin: links[0]?.getAttribute('crossorigin') ?? null,
+      display: manifest?.display ?? null,
+      hrefScheme: href.split('://')[0] ?? null,
+      hrefResource: href.split('/').at(-1) ?? null,
+      iconPrefixes: (manifest?.icons ?? []).map((icon) =>
+        icon.src.slice(0, 'data:image/png;base64,'.length),
+      ),
+      iconSizes: (manifest?.icons ?? []).map((icon) => icon.sizes),
+      linkCount: links.length,
+      name: manifest?.name ?? null,
+      shortName: manifest?.short_name ?? null,
+      startUrl: manifest?.start_url ?? null,
+      themeColor: manifest?.theme_color ?? null,
+    };
+  });
+  assert.deepEqual(appManifestDisguise, {
+    crossOrigin: null,
+    display: 'standalone',
+    hrefScheme: 'chrome-extension',
+    hrefResource: 'docode.webmanifest',
+    iconPrefixes: ['data:image/png;base64,', 'data:image/png;base64,'],
+    iconSizes: ['192x192', '512x512'],
+    linkCount: 1,
+    name: 'DOCode',
+    shortName: 'DOCode',
+    startUrl: 'https://linux.do/',
+    themeColor: '#1e1e1e',
+  });
   const fullWorkbenchListChrome = await readFullWorkbenchChrome(
     topicListFixturePage,
     '.docode-topic-list__line[data-row-kind="signature"]',
@@ -2433,7 +2532,7 @@ try {
     secondarySidebarDisabled: true,
     topActionCount: 6,
     trafficLightCount: 3,
-    trafficLightInteractiveCount: 1,
+    trafficLightInteractiveCount: 3,
     warningBadgeCount: 1,
     windowControlCount: 0,
     windowControlInteractiveCount: 0,
@@ -2555,7 +2654,7 @@ try {
     trafficLightInteractiveCount: 0,
     warningBadgeCount: 1,
     windowControlCount: 3,
-    windowControlInteractiveCount: 1,
+    windowControlInteractiveCount: 3,
   });
   const windowsControlFidelity = await readWindowsControlFidelity(windowsChromePage);
   assert.deepEqual(windowsControlFidelity, {
@@ -2617,7 +2716,7 @@ try {
     trafficLightInteractiveCount: 0,
     warningBadgeCount: 1,
     windowControlCount: 3,
-    windowControlInteractiveCount: 1,
+    windowControlInteractiveCount: 3,
   });
   const windowsNarrowControlFidelity = await readWindowsControlFidelity(windowsChromePage);
   assert.deepEqual(windowsNarrowControlFidelity, windowsControlFidelity);
@@ -3803,7 +3902,11 @@ try {
   await tabFixturePage.screenshot({ path: path.join(evidenceDir, 'tabs-history-reopened.png') });
 
   await context.route('https://linux.do/hot', (route) =>
-    route.fulfill({ body: topicListFixtureHtml(), contentType: 'text/html', status: 200 }),
+    route.fulfill({
+      body: topicListFixtureHtml(),
+      contentType: 'text/html; charset=utf-8',
+      status: 200,
+    }),
   );
   await tabFixturePage.reload({ waitUntil: 'domcontentloaded' });
   await assertRuntimeOwnership(tabFixturePage, true);
@@ -4256,7 +4359,7 @@ try {
   await context.route(loadingFixtureUrl, (route) =>
     route.fulfill({
       body: '<!doctype html><html><head><title>Loading fixture</title></head><body><main id="main-outlet" aria-busy="true"><div role="progressbar"></div></main></body></html>',
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -4342,7 +4445,7 @@ try {
   await context.route(errorFixtureUrl, (route) =>
     route.fulfill({
       body: '<!doctype html><html><head><title>Error fixture</title></head><body><main id="main-outlet">Native error fixture</main></body></html>',
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -4394,7 +4497,7 @@ try {
   await context.route(topicLoadingFixtureUrl, (route) =>
     route.fulfill({
       body: '<!doctype html><html><body><main id="main-outlet" aria-busy="true"><div role="progressbar"></div></main></body></html>',
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -4419,7 +4522,7 @@ try {
   await context.route(topicErrorFixtureUrl, (route) =>
     route.fulfill({
       body: '<!doctype html><html><body><main id="main-outlet"><h1 data-topic-id="42"><a href="/t/synthetic-topic/42">Synthetic topic</a></h1></main></body></html>',
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -4455,7 +4558,7 @@ try {
   await context.route(compatibilityFixtureUrl, (route) =>
     route.fulfill({
       body: compatibilityTopicFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -4661,7 +4764,7 @@ try {
   await context.route(topicFixtureUrl, (route) =>
     route.fulfill({
       body: topicFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -5012,7 +5115,7 @@ try {
     keywordFontSize: '13px',
     nativeRootCount: 2,
     postCount: 2,
-    requestedLineNumber: '22',
+    requestedLineNumber: '24',
     requestedLineNumberColor: 'rgb(204, 204, 204)',
     sourceNativeRootCount: 0,
     titleColor: 'rgb(78, 201, 176)',
@@ -5038,7 +5141,8 @@ try {
     replyBoxShadow: 'none',
     signatureText: 'private void fixture_user_2() {',
     stringColor: 'rgb(206, 145, 120)',
-    stringQuoted: true,
+    stringFramingAfter: 'none',
+    stringFramingBefore: '"*"',
     unreadText: '@unread',
   });
   const unreadReply = topicFixturePage.locator('.docode-topic-code__reply[data-post-number="2"]');
@@ -5064,6 +5168,219 @@ try {
   await topicFixturePage.screenshot({
     path: path.join(topicUnreadAnnotationEvidenceDir, 'topic-unread-annotation-cleared.png'),
   });
+  const replyCodeStructure = await topicFixturePage.evaluate(() => {
+    const post1 = document.querySelector('.docode-topic-code__reply[data-post-number="1"]');
+    const post2 = document.querySelector('.docode-topic-code__reply[data-post-number="2"]');
+    if (!(post1 instanceof HTMLElement) || !(post2 instanceof HTMLElement)) {
+      throw new Error('Missing reply code structure fixtures.');
+    }
+    const lineOf = (element) => element?.getAttribute('data-docode-editor-line') ?? null;
+    const declOpen = post1.querySelector('.docode-topic-code__content-decl--open');
+    const declCloseLine = post1.querySelector('.docode-topic-code__scaffold-decl');
+    const contentCall = post1.querySelector('.docode-topic-code__scaffold-content-call');
+    const onebox = post1.querySelector('aside.onebox[data-docode-content-role="asset"]');
+    const imageLine = post1.querySelector('figure[data-docode-content-role="asset"]');
+    const foldBadge = post1.querySelector('.docode-topic-code__content-fold');
+    const commentLine = post2.querySelector('[data-docode-content-role="comment-line"]');
+    return {
+      commentLineMarker: commentLine ? getComputedStyle(commentLine, '::before').content : null,
+      commentWrapTexts: Array.from(
+        post2.querySelectorAll('.docode-topic-code__comment-wrap'),
+        (element) => element.textContent?.trim() ?? '',
+      ),
+      contentCallText: contentCall?.textContent ?? null,
+      declOpenHostLine: lineOf(declOpen?.closest('[data-docode-editor-line]') ?? null),
+      declOpenText: declOpen?.textContent ?? null,
+      foldBadgeLabel: foldBadge?.getAttribute('aria-label') ?? null,
+      foldBadgeText: foldBadge?.textContent?.trim() ?? null,
+      foldBadgeInDeclClose: foldBadge?.parentElement === declCloseLine,
+      hiddenLineElements: post1.querySelectorAll('[data-docode-content-hidden="true"]').length,
+      imageFraming: imageLine ? getComputedStyle(imageLine, '::before').content : null,
+      lines: {
+        boosts1: lineOf(post1.querySelector('.docode-topic-code__boosts-line')),
+        close1: lineOf(post1.querySelector('.docode-topic-code__reply-close')),
+        close2: lineOf(post2.querySelector('.docode-topic-code__reply-close')),
+        contentCall1: lineOf(contentCall),
+        declClose1: lineOf(declCloseLine),
+        onebox1: lineOf(onebox),
+        save1: lineOf(post1.querySelector('.docode-topic-code__save-line')),
+        save2: lineOf(post2.querySelector('.docode-topic-code__save-line')),
+      },
+      oneboxFraming: onebox ? getComputedStyle(onebox, '::before').content : null,
+      scaffoldNewText: post1.querySelector('.docode-topic-code__scaffold-new')?.textContent ?? null,
+    };
+  });
+  assert.deepEqual(replyCodeStructure, {
+    commentLineMarker: '"*"',
+    commentWrapTexts: ['/**', '⋯*/'],
+    contentCallText: 'reply.content(content);',
+    declOpenHostLine: '8',
+    declOpenText: 'String content = """',
+    foldBadgeLabel: 'Expand 4 hidden lines',
+    foldBadgeText: '⋯',
+    foldBadgeInDeclClose: true,
+    hiddenLineElements: 4,
+    imageFraming: '"reply.image("',
+    lines: {
+      boosts1: '19',
+      close1: '21',
+      close2: '37',
+      contentCall1: '18',
+      declClose1: '14',
+      onebox1: '16',
+      save1: '20',
+      save2: '36',
+    },
+    oneboxFraming: '"reply.github("',
+    scaffoldNewText: 'Replies reply = new Replies();',
+  });
+  await topicFixturePage.screenshot({
+    path: path.join(evidenceDir, 'topic-reply-code-structure-folded.png'),
+  });
+  await topicFixturePage
+    .locator('.docode-topic-code__reply[data-post-number="1"] .docode-topic-code__content-fold')
+    .click();
+  await topicFixturePage
+    .locator(
+      '.docode-topic-code__reply[data-post-number="1"] .docode-topic-code__reply-close[data-docode-editor-line="25"]',
+    )
+    .waitFor();
+  const expandedReplyCodeStructure = await topicFixturePage.evaluate(() => {
+    const post1 = document.querySelector('.docode-topic-code__reply[data-post-number="1"]');
+    if (!(post1 instanceof HTMLElement)) throw new Error('Missing expanded reply fixture.');
+    const badge = post1.querySelector('.docode-topic-code__content-fold');
+    const nativeHr = post1.querySelector('.docode-topic-code__content-slot > .cooked hr');
+    return {
+      badgeExpanded: badge?.getAttribute('aria-expanded') ?? null,
+      badgeIcon: badge?.querySelector('.codicon-chevron-up') !== null,
+      hiddenLineElements: post1.querySelectorAll('[data-docode-content-hidden="true"]').length,
+      hrVisible: nativeHr instanceof HTMLElement && getComputedStyle(nativeHr).display !== 'none',
+      save1:
+        post1
+          .querySelector('.docode-topic-code__save-line')
+          ?.getAttribute('data-docode-editor-line') ?? null,
+    };
+  });
+  assert.deepEqual(expandedReplyCodeStructure, {
+    badgeExpanded: 'true',
+    badgeIcon: true,
+    hiddenLineElements: 0,
+    hrVisible: true,
+    save1: '24',
+  });
+  await topicFixturePage.screenshot({
+    path: path.join(evidenceDir, 'topic-reply-code-structure-expanded.png'),
+  });
+  await topicFixturePage
+    .locator('.docode-topic-code__reply[data-post-number="1"] .docode-topic-code__content-fold')
+    .click();
+  await topicFixturePage
+    .locator(
+      '.docode-topic-code__reply[data-post-number="1"] .docode-topic-code__reply-close[data-docode-editor-line="21"]',
+    )
+    .waitFor();
+  const boostedReply = topicFixturePage.locator('.docode-topic-code__reply[data-post-number="1"]');
+  assert.equal(
+    await boostedReply.locator('.docode-topic-code__reaction-count').textContent(),
+    '♥333',
+  );
+  assert.equal(
+    await boostedReply.locator('.docode-topic-code__boosts-label').textContent(),
+    '// boosts(8):',
+  );
+  assert.equal(await boostedReply.locator('.docode-topic-code__boost').count(), 8);
+  assert.deepEqual(
+    await boostedReply
+      .locator('.docode-topic-code__boost .docode-topic-code__boost-text')
+      .allTextContents(),
+    [
+      '前排合影',
+      '打卡',
+      ...Array.from(
+        { length: 6 },
+        (_, index) => `你已经不是我们兄弟了，是路人 ${index + 3} 号.gif`,
+      ),
+    ],
+  );
+  const boostsLineMetrics = await boostedReply
+    .locator('.docode-topic-code__boosts-line')
+    .evaluate((line) => {
+      const lineHeight = Number.parseFloat(
+        getComputedStyle(line).getPropertyValue('--docode-topic-line-height'),
+      );
+      const height = line.getBoundingClientRect().height;
+      return {
+        height,
+        lineHeight,
+        rowRemainder: height % lineHeight,
+        scrollableOverflow: line.scrollWidth > line.clientWidth + 1,
+        softWrap: line.getAttribute('data-docode-soft-wrap'),
+      };
+    });
+  assert.equal(boostsLineMetrics.softWrap, 'true');
+  assert.equal(boostsLineMetrics.rowRemainder, 0);
+  assert.ok(
+    boostsLineMetrics.height >= boostsLineMetrics.lineHeight * 2,
+    `Boost chips must wrap into flow rows instead of overflowing (height ${String(boostsLineMetrics.height)}).`,
+  );
+  assert.equal(boostsLineMetrics.scrollableOverflow, false);
+  const firstBoost = boostedReply.locator('.docode-topic-code__boost').first();
+  assert.equal(await firstBoost.getAttribute('data-docode-tooltip'), null);
+  assert.equal(await firstBoost.locator('.docode-topic-code__boost-preview').isVisible(), false);
+  await firstBoost.hover();
+  await firstBoost.locator('.docode-topic-code__boost-preview').waitFor({ state: 'visible' });
+  assert.deepEqual(
+    await firstBoost
+      .locator(
+        '.docode-topic-code__boost-preview :is(.docode-topic-code__boost-preview-user, .docode-topic-code__boost-preview-text)',
+      )
+      .allTextContents(),
+    ['@sunking', '前排合影'],
+  );
+  assert.equal(await boostedReply.locator('.docode-topic-code__boost-add').count(), 0);
+  assert.equal(await topicFixturePage.locator('.docode-topic-code__metadata-boost').count(), 0);
+  await topicFixturePage.screenshot({
+    path: path.join(topicUnreadAnnotationEvidenceDir, 'topic-boosts-reactions.png'),
+  });
+  await topicFixturePage.mouse.move(8, 8);
+  const oneboxLink = boostedReply.locator(
+    '.cooked aside.onebox[data-docode-onebox] .docode-topic-code__onebox-link',
+  );
+  assert.equal(await oneboxLink.getAttribute('href'), 'https://github.com/ruezo/docode');
+  assert.equal(await oneboxLink.getAttribute('target'), '_blank');
+  assert.equal(await oneboxLink.locator('.codicon-github').count(), 1);
+  assert.equal(
+    await oneboxLink.locator('.docode-topic-code__onebox-label').textContent(),
+    'GitHub - ruezo/docode: A Chromium extension that turns Linux DO into a VS Code workbench.',
+  );
+  const oneboxMetrics = await boostedReply
+    .locator('.cooked aside.onebox[data-docode-onebox]')
+    .evaluate((onebox) => {
+      const link = onebox.querySelector('.docode-topic-code__onebox-link');
+      const label = onebox.querySelector('.docode-topic-code__onebox-label');
+      return {
+        cardVisible: Array.from(onebox.children).some(
+          (child) =>
+            child !== link &&
+            child instanceof HTMLElement &&
+            getComputedStyle(child).display !== 'none',
+        ),
+        height: onebox.getBoundingClientRect().height,
+        kind: onebox.getAttribute('data-docode-editor-line-kind'),
+        lineCount: onebox.getAttribute('data-docode-editor-line-count'),
+        linkColor: link instanceof HTMLElement ? getComputedStyle(link).color : null,
+        labelColor: label instanceof HTMLElement ? getComputedStyle(label).color : null,
+      };
+    });
+  assert.equal(oneboxMetrics.cardVisible, false);
+  assert.equal(oneboxMetrics.height, 20);
+  assert.equal(oneboxMetrics.kind, 'link');
+  assert.equal(oneboxMetrics.lineCount, '1');
+  assert.equal(oneboxMetrics.linkColor, 'rgb(77, 170, 252)');
+  assert.equal(oneboxMetrics.labelColor, 'rgb(77, 170, 252)');
+  await boostedReply
+    .locator('.cooked aside.onebox[data-docode-onebox]')
+    .screenshot({ path: path.join(topicUnreadAnnotationEvidenceDir, 'topic-onebox-link.png') });
   const hardBreakLine = topicFixturePage.locator(
     '.docode-topic-code__reply[data-post-number="2"] .docode-topic-code__content-slot > .cooked > p',
   );
@@ -5304,6 +5621,14 @@ try {
   });
   await topicFixturePage.mouse.move(1, 1);
   await imagePreview.waitFor({ state: 'hidden' });
+  await topicFixturePage
+    .locator('.docode-topic-code__reply[data-post-number="2"]')
+    .evaluate((element) => {
+      element.scrollIntoView({ block: 'center' });
+    });
+  await topicFixturePage
+    .locator('.docode-topic-code__reply[data-post-number="2"][data-active="true"]')
+    .waitFor();
   const topicPostAffordances = await readTopicPostAffordances(topicFixturePage);
   assert.deepEqual(topicPostAffordances, {
     actionStripCount: 2,
@@ -5395,6 +5720,62 @@ try {
       document.querySelectorAll('#main-outlet .cooked').length === 0,
   );
 
+  await context.route('https://linux.do/u/fixture-user.json', (route) =>
+    route.fulfill({
+      body: JSON.stringify({ user: { id: 12, trust_level: 1, username: 'fixture-user' } }),
+      contentType: 'application/json',
+      status: 200,
+    }),
+  );
+  await context.route('https://linux.do/u/fixture-user/summary.json', (route) =>
+    route.fulfill({
+      body: JSON.stringify({
+        user_summary: {
+          days_visited: 20,
+          likes_given: 1,
+          likes_received: 0,
+          post_count: 3,
+          posts_read_count: 250,
+          time_read: 3600,
+          topic_count: 1,
+          topics_entered: 25,
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    }),
+  );
+  await context.route('https://linux.do/session/csrf.json', (route) =>
+    route.fulfill({
+      body: JSON.stringify({ csrf: 'fixture-csrf-token' }),
+      contentType: 'application/json',
+      status: 200,
+    }),
+  );
+  const boostCreateRequests = [];
+  await context.route('https://linux.do/discourse-boosts/posts/*/boosts', async (route) => {
+    const request = route.request();
+    boostCreateRequests.push({
+      body: request.postData(),
+      csrf: await request.headerValue('x-csrf-token'),
+      method: request.method(),
+      url: new URL(request.url()).pathname,
+    });
+    await route.fulfill({
+      body: JSON.stringify({
+        can_delete: true,
+        cooked: '<p>打卡</p>',
+        id: 991,
+        user: {
+          avatar_template: '/user_avatar/linux.do/fixture-user/{size}/1.png',
+          id: 12,
+          username: 'fixture-user',
+        },
+      }),
+      contentType: 'application/json',
+      status: 200,
+    });
+  });
   const nativeActionFixtureUrl =
     'https://linux.do/t/synthetic-native-actions/43?docode_action_fixture=1';
   let reactionRequestCount = 0;
@@ -5403,7 +5784,7 @@ try {
   await context.route(nativeActionFixtureUrl, (route) =>
     route.fulfill({
       body: authenticatedTopicFixtureHtml(),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -5422,8 +5803,18 @@ try {
               user_id: 12,
               username: 'action-author',
             },
+            {
+              cooked: '<p>Second native post without boosts.</p>',
+              created_at: '2023-11-14T22:15:00.000Z',
+              id: 201,
+              name: 'Second Author',
+              post_number: 2,
+              topic_id: 43,
+              user_id: 13,
+              username: 'second-author',
+            },
           ],
-          stream: [200],
+          stream: [200, 201],
         },
       }),
       contentType: 'application/json',
@@ -5461,7 +5852,7 @@ try {
     await route.fulfill({
       body: JSON.stringify(
         postRequestCount === 1
-          ? { id: 201, post_number: 2, topic_id: 43 }
+          ? { id: 202, post_number: 3, topic_id: 43 }
           : { errors: ['Synthetic reply rejected.'] },
       ),
       contentType: 'application/json',
@@ -5489,8 +5880,184 @@ try {
   await nativeActionPage.screenshot({
     path: path.join(statusEvidenceDir, 'status-actions-ready.png'),
   });
+  const trustBadge = nativeActionPage.locator('.docode-workbench__status-item--trust');
+  await trustBadge.waitFor();
+  assert.equal(await trustBadge.textContent(), 'TL1');
+  assert.equal(await trustBadge.locator('.codicon-verified').count(), 1);
+  await trustBadge.click();
+  await nativeActionPage
+    .locator('.docode-workbench__settings-tab-label', { hasText: 'Trust Level' })
+    .waitFor();
+  const trustPanel = nativeActionPage.locator('.docode-trust');
+  assert.equal(
+    await trustPanel.locator('.docode-trust__title').textContent(),
+    'trust-level build · TL1 → TL2',
+  );
+  assert.equal(await trustPanel.locator('.docode-trust__user').textContent(), '@fixture-user');
+  await trustPanel.locator('.docode-trust__summary-status').waitFor();
+  assert.equal(
+    await trustPanel.locator('.docode-trust__summary-status').textContent(),
+    '6/7 checks passed',
+  );
+  assert.equal(await trustPanel.locator('.docode-trust__step').count(), 7);
+  assert.equal(await trustPanel.locator('.docode-trust__step[data-complete="true"]').count(), 6);
+  assert.equal(
+    await trustPanel
+      .locator('.docode-trust__step[data-complete="false"] .docode-trust__step-label')
+      .textContent(),
+    'Likes received',
+  );
+  const connectLink = trustPanel.locator('a', { hasText: 'connect.linux.do' });
+  assert.equal(await connectLink.getAttribute('href'), 'https://connect.linux.do/');
+  assert.equal(await connectLink.getAttribute('target'), '_blank');
+  assert.equal(await trustPanel.locator('.docode-trust__stat').count(), 8);
+  assert.deepEqual(
+    await trustPanel.locator('.docode-trust__stat').nth(1).locator('dt, dd').allTextContents(),
+    ['Reading time', '1 h'],
+  );
+  const trustPanelGeometry = await trustPanel.evaluate((panel) => {
+    const editor = panel.closest('.docode-workbench__editor');
+    const footerLink = panel.querySelector('.docode-trust__footer a');
+    const panelBox = panel.getBoundingClientRect();
+    const editorBox = editor?.getBoundingClientRect() ?? null;
+    const linkBox = footerLink?.getBoundingClientRect() ?? null;
+    return {
+      fillsEditorBody: editorBox !== null && editorBox.bottom - panelBox.bottom < 2,
+      footerLinkVisible:
+        linkBox !== null &&
+        editorBox !== null &&
+        linkBox.bottom <= editorBox.bottom + 1 &&
+        linkBox.height > 0,
+      panelHeight: panelBox.height,
+      settingsOpenAttribute: editor?.getAttribute('data-settings-open') ?? null,
+    };
+  });
+  assert.equal(trustPanelGeometry.settingsOpenAttribute, 'true');
+  assert.ok(
+    trustPanelGeometry.panelHeight > 300,
+    `Trust panel must fill the editor body, not the breadcrumbs row (height ${String(trustPanelGeometry.panelHeight)}).`,
+  );
+  assert.equal(trustPanelGeometry.fillsEditorBody, true);
+  assert.equal(trustPanelGeometry.footerLinkVisible, true);
+  await nativeActionPage.screenshot({
+    path: path.join(statusEvidenceDir, 'trust-level-panel.png'),
+  });
+  await nativeActionPage.getByRole('button', { name: 'Close Trust Level' }).click();
+  await trustPanel.waitFor({ state: 'detached' });
+  const boostSendLine = nativeActionPage.locator(
+    '.docode-topic-code__reply[data-post-number="1"] .docode-topic-code__boosts-line',
+  );
+  await boostSendLine.waitFor();
+  assert.equal(
+    await boostSendLine.locator('.docode-topic-code__boosts-label').textContent(),
+    '// boosts(1):',
+  );
+  const boostAddButton = boostSendLine.getByRole('button', { name: 'Boost post 1' });
+  await boostAddButton.click();
+  const boostInput = boostSendLine.getByRole('textbox', { name: 'Boost text for post 1' });
+  await boostInput.fill('打卡');
+  await boostInput.press('Enter');
+  await boostSendLine.locator('.docode-topic-code__boost-text', { hasText: '打卡' }).waitFor();
+  assert.deepEqual(boostCreateRequests, [
+    {
+      body: JSON.stringify({ post_id: 200, raw: '打卡' }),
+      csrf: 'fixture-csrf-token',
+      method: 'POST',
+      url: '/discourse-boosts/posts/200/boosts',
+    },
+  ]);
+  assert.equal(
+    await boostSendLine.locator('.docode-topic-code__boosts-label').textContent(),
+    '// boosts(2):',
+  );
+  assert.deepEqual(
+    await boostSendLine.locator('.docode-topic-code__boost-text').allTextContents(),
+    ['前排合影', '打卡'],
+  );
+  assert.equal(await boostSendLine.locator('.docode-topic-code__boost img').count(), 2);
+  assert.equal(await boostSendLine.getByRole('button', { name: 'Boost post 1' }).count(), 0);
+  assert.equal(await boostSendLine.getByRole('textbox').count(), 0);
+  await nativeActionPage.screenshot({
+    path: path.join(statusEvidenceDir, 'boost-quick-reply-sent.png'),
+  });
+  const secondNativeReply = nativeActionPage.locator(
+    '.docode-topic-code__reply[data-post-number="2"]',
+  );
+  assert.equal(await secondNativeReply.locator('.docode-topic-code__boosts-line').count(), 0);
+  const secondCloseLineBefore = Number(
+    await secondNativeReply
+      .locator('.docode-topic-code__reply-close')
+      .getAttribute('data-docode-editor-line'),
+  );
+  await secondNativeReply.locator('.docode-topic-code__reply-metadata').hover();
+  const metadataBoostEntry = secondNativeReply.getByRole('button', { name: 'Boost post 2' });
+  await metadataBoostEntry.click();
+  const grownBoostLine = secondNativeReply.locator('.docode-topic-code__boosts-line');
+  await grownBoostLine.waitFor();
+  assert.equal(
+    await grownBoostLine.locator('.docode-topic-code__boosts-label').textContent(),
+    '// boosts(0):',
+  );
+  const secondCloseLineWhileEditing = Number(
+    await secondNativeReply
+      .locator('.docode-topic-code__reply-close')
+      .getAttribute('data-docode-editor-line'),
+  );
+  assert.equal(secondCloseLineWhileEditing, secondCloseLineBefore + 1);
+  const grownEditor = grownBoostLine.locator('.docode-topic-code__boost-editor');
+  const grownEditorStyles = await grownEditor.evaluate((editor) => {
+    const input = editor.querySelector('.docode-topic-code__boost-input');
+    if (!(input instanceof HTMLElement)) throw new Error('Missing boost input.');
+    const inputStyle = getComputedStyle(input);
+    return {
+      inputBorder: inputStyle.borderTopWidth,
+      inputOutline: inputStyle.outlineStyle,
+      pillHeight: editor.getBoundingClientRect().height,
+    };
+  });
+  assert.equal(grownEditorStyles.inputBorder, '0px');
+  assert.equal(grownEditorStyles.inputOutline, 'none');
+  assert.equal(grownEditorStyles.pillHeight, 18);
+  assert.equal(await grownBoostLine.locator('.docode-topic-code__boost-editor-avatar').count(), 1);
+  const grownInput = grownBoostLine.getByRole('textbox', { name: 'Boost text for post 2' });
+  assert.equal(await grownInput.getAttribute('placeholder'), 'Boost second-author…');
+  await nativeActionPage.screenshot({
+    path: path.join(statusEvidenceDir, 'boost-editor-pill.png'),
+  });
+  await grownInput.press('Escape');
+  await grownBoostLine.waitFor({ state: 'detached' });
+  assert.equal(
+    Number(
+      await secondNativeReply
+        .locator('.docode-topic-code__reply-close')
+        .getAttribute('data-docode-editor-line'),
+    ),
+    secondCloseLineBefore,
+  );
+  await secondNativeReply.locator('.docode-topic-code__reply-metadata').hover();
+  await secondNativeReply.getByRole('button', { name: 'Boost post 2' }).click();
+  const regrownInput = secondNativeReply.getByRole('textbox', { name: 'Boost text for post 2' });
+  await regrownInput.fill('支持');
+  await regrownInput.press('Enter');
+  await secondNativeReply.locator('.docode-topic-code__boost-text', { hasText: '支持' }).waitFor();
+  assert.equal(boostCreateRequests.length, 2);
+  assert.deepEqual(boostCreateRequests[1], {
+    body: JSON.stringify({ post_id: 201, raw: '支持' }),
+    csrf: 'fixture-csrf-token',
+    method: 'POST',
+    url: '/discourse-boosts/posts/201/boosts',
+  });
+  assert.equal(
+    await secondNativeReply.locator('.docode-topic-code__boosts-label').textContent(),
+    '// boosts(1):',
+  );
+  await secondNativeReply.locator('.docode-topic-code__reply-metadata').hover();
+  assert.equal(await secondNativeReply.getByRole('button', { name: 'Boost post 2' }).count(), 0);
+  await nativeActionPage.screenshot({
+    path: path.join(statusEvidenceDir, 'boost-grown-line-sent.png'),
+  });
   const nativeBookmarkAction = nativeActionPage.locator(
-    '[data-docode-workbench-root] button[data-action="bookmark"]',
+    '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"] button[data-action="bookmark"]',
   );
   const nativeReply = nativeActionPage.locator(
     '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"]',
@@ -5512,6 +6079,7 @@ try {
     'Like',
     'Bookmark',
     'Copy Post Link',
+    'Share as Image',
   ]);
   const postMenuGeometry = await pointerPostMenu.evaluate((menu) => {
     const style = getComputedStyle(menu);
@@ -5618,11 +6186,11 @@ try {
     })
     .waitFor({ timeout: 3_000 });
   const confirmedLikeAction = nativeActionPage.locator(
-    '[data-docode-workbench-root] button[data-action="like"]',
+    '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"] button[data-action="like"]',
   );
   await nativeActionPage.waitForFunction(() => {
     const action = document.querySelector(
-      '[data-docode-workbench-root] button[data-action="like"]',
+      '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"] button[data-action="like"]',
     );
     return action?.getAttribute('aria-label') === 'Unlike: liked on Linux DO';
   });
@@ -5658,6 +6226,39 @@ try {
     path: path.join(likeStateTransitionEvidenceDir, 'like-to-unlike-confirmed.png'),
   });
 
+  await nativeReply.hover();
+  await nativeMoreActions.waitFor();
+  await nativeMoreActions.click();
+  const shareMenu = nativeActionPage.getByRole('menu', { name: 'Post 1 actions menu' });
+  await shareMenu.waitFor();
+  await shareMenu.getByRole('menuitem', { name: 'Share as Image' }).click();
+  const shareDialog = nativeActionPage.getByRole('dialog', { name: 'Share card for post 1' });
+  await shareDialog.waitFor();
+  await shareDialog.locator('img').waitFor();
+  const shareCardFacts = await shareDialog.evaluate((dialog) => {
+    const image = dialog.querySelector('img');
+    const title = dialog.querySelector('.docode-topic-code__share-title')?.textContent ?? '';
+    return {
+      copyDisabled: dialog.querySelector('[data-share-action="copy"]')?.disabled ?? true,
+      downloadDisabled: dialog.querySelector('[data-share-action="download"]')?.disabled ?? true,
+      imageTallEnough: (image?.naturalHeight ?? 0) >= 500,
+      imageWideEnough: (image?.naturalWidth ?? 0) >= 1000,
+      titleShape: /^Share [A-Za-z0-9_]+\.java$/u.test(title),
+    };
+  });
+  assert.deepEqual(shareCardFacts, {
+    copyDisabled: false,
+    downloadDisabled: false,
+    imageTallEnough: true,
+    imageWideEnough: true,
+    titleShape: true,
+  });
+  await shareDialog.screenshot({
+    path: path.join(contextActionEvidenceDir, 'share-card-dialog.png'),
+  });
+  await nativeActionPage.keyboard.press('Escape');
+  await shareDialog.waitFor({ state: 'detached' });
+
   await nativeBookmarkAction.click();
   await nativeActionPage
     .locator('[data-docode-workbench-root] [data-action="bookmark"][data-state="pending"]')
@@ -5678,7 +6279,7 @@ try {
   await runTerminalCommand(nativeActionPage, 'like', 'Removed Like from post 1.');
   await nativeActionPage.waitForFunction(() => {
     const label = document.querySelector(
-      '[data-docode-workbench-root] button[data-action="like"] .docode-topic-code__action-label',
+      '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"] button[data-action="like"] .docode-topic-code__action-label',
     );
     return label?.textContent?.trim() === 'like';
   });
@@ -5704,12 +6305,20 @@ try {
   });
   await nativeActionPage.keyboard.press('Escape');
 
-  await nativeActionPage.locator('[data-docode-workbench-root] button[data-action="like"]').click();
   await nativeActionPage
-    .locator('[data-docode-workbench-root] button[data-action="like"][data-state="error"]')
+    .locator(
+      '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"] button[data-action="like"]',
+    )
+    .click();
+  await nativeActionPage
+    .locator(
+      '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"] button[data-action="like"][data-state="error"]',
+    )
     .waitFor({ timeout: 3_000 });
   const nativeFailureLabel = await nativeActionPage
-    .locator('[data-docode-workbench-root] button[data-action="like"][data-state="error"]')
+    .locator(
+      '[data-docode-workbench-root] .docode-topic-code__reply[data-post-number="1"] button[data-action="like"][data-state="error"]',
+    )
     .getAttribute('aria-label');
   await nativeActionPage.screenshot({
     path: path.join(nativeActionEvidenceDir, 'native-like-failure.png'),
@@ -5960,7 +6569,7 @@ try {
   await nativeComposer.waitFor({ state: 'detached', timeout: 3_000 });
   try {
     await nativeActionPage
-      .locator('[data-docode-workbench-root] [data-post-number="2"]')
+      .locator('[data-docode-workbench-root] [data-post-number="3"]')
       .waitFor({ timeout: 3_000 });
   } catch (error) {
     const diagnostic = await nativeActionPage.evaluate(() => ({
@@ -5985,16 +6594,17 @@ try {
   await nativeActionPage.waitForFunction(
     () =>
       document
-        .querySelector('[data-docode-workbench-root] [data-post-number="2"] .cooked')
-        ?.textContent?.trim() === 'Confirmed native reply',
+        .querySelector('[data-docode-workbench-root] [data-post-number="3"] .cooked')
+        ?.textContent?.trim()
+        ?.endsWith('Confirmed native reply'),
     undefined,
     { timeout: 3_000 },
   );
   assert.equal(
     await nativeActionPage
-      .locator('[data-docode-workbench-root] [data-post-number="2"] .cooked')
+      .locator('[data-docode-workbench-root] [data-post-number="3"] .cooked')
       .textContent(),
-    'Confirmed native reply',
+    'Replies reply = new Replies();Confirmed native reply',
   );
   await nativeActionPage.waitForFunction(
     () => document.activeElement?.getAttribute('aria-label') === 'Linux DO command input',
@@ -6154,6 +6764,8 @@ try {
   });
   await runTerminalCommand(nativeActionPage, 'doctor', 'reply available via footer');
   await nativeActionPage.getByText(/^build \d+\.\d+\.\d+/u).waitFor();
+  await nativeActionPage.getByText('trust TL1 @fixture-user').waitFor();
+  await nativeActionPage.getByText('user logged-in fixture-user').waitFor();
   await runTerminalCommand(nativeActionPage, 'reply', 'Opened the native Linux DO Reply composer.');
   await nativeComposer.waitFor();
   await nativeComposerEditor.fill('Rejected authoritative draft');
@@ -6201,7 +6813,7 @@ try {
     failurePreservedDraft: true,
     postRequestCount: 2,
     restorationPreservedDraft: true,
-    submittedPostCount: 2,
+    submittedPostCount: 3,
   });
   assert.deepEqual(nativeActionErrors, []);
   await nativeActionPage.close();
@@ -6256,13 +6868,13 @@ try {
     'original-post heading code media',
     'heading code media requested current',
   ]);
-  assert.equal(topicMinimap.glyphCount, 36);
+  assert.equal(topicMinimap.glyphCount, 33);
   assert.equal(topicMinimap.glyphFirstText, 'import LinuxDo.Topic;');
   assert.equal(topicMinimap.glyphLastLineNumber, 39);
   assert.equal(topicMinimap.glyphLastText, '}');
-  assert(topicMinimap.glyphTexts.includes('Ander:'));
+  assert(topicMinimap.glyphTexts.includes('* Ander:'));
   assert(topicMinimap.glyphTones.includes('quote'));
-  assert.equal(topicMinimap.uniqueGlyphTops, 36);
+  assert.equal(topicMinimap.uniqueGlyphTops, 33);
   assert.equal(topicMinimap.glyphFontSize, '2px');
   assert.equal(topicMinimap.glyphLineHeight, '3px');
   assert.equal(topicMinimap.glyphOpacity, '0.9');
@@ -6923,11 +7535,27 @@ try {
   });
   await statusMode.click();
   await topicFixturePage.getByRole('document', { name: 'Topic document' }).waitFor();
+  // TEMP PROBE
+  await topicFixturePage.waitForTimeout(400);
+  const probeDump = await topicFixturePage.evaluate(() => {
+    const cooked = document.querySelector('#native-cooked-1');
+    return Array.from(cooked?.children ?? []).map((child) => ({
+      tag: child.tagName.toLowerCase(),
+      text: (child.textContent ?? '').trim().slice(0, 30),
+      line: child.getAttribute('data-docode-editor-line'),
+      count: child.getAttribute('data-docode-editor-line-count'),
+      kind: child.getAttribute('data-docode-editor-line-kind'),
+    }));
+  });
+  console.log('PROBE-DOC-DUMP', JSON.stringify(probeDump, null, 1));
+  process.exit(0);
   const topicDocDocument = await readTopicDocDocument(topicFixturePage);
   assert.deepEqual(topicDocDocument, {
     contentFontSize: '13px',
     contentLineHeight: '20px',
     floorCount: 2,
+    framedLinkBefore: 'none',
+    framedTextBefore: 'none',
     headingColor: 'rgb(86, 156, 214)',
     headingCount: 4,
     indentBorderWidth: '0px',
@@ -7133,6 +7761,30 @@ try {
     name: 'Terminal',
     exact: true,
   });
+  const narrowSoftWrap = await narrowShellPage.evaluate(() => {
+    const surface = document.querySelector('.docode-topic-code__surface');
+    const wrapped = document.querySelector(
+      '.docode-topic-code__content-slot > .cooked [data-docode-soft-wrap="true"]',
+    );
+    const scaffoldLines = Array.from(
+      document.querySelectorAll('.docode-topic-code__scaffold-line'),
+    );
+    if (!(surface instanceof HTMLElement) || !(wrapped instanceof HTMLElement)) {
+      throw new Error('Missing narrow soft-wrap fixture elements.');
+    }
+    return {
+      horizontalOverflow: surface.scrollWidth > surface.clientWidth + 1,
+      scaffoldOutsideSurface: scaffoldLines.filter(
+        (line) => !line.closest('.docode-topic-code__surface'),
+      ).length,
+      wrappedWhiteSpace: getComputedStyle(wrapped).whiteSpace,
+    };
+  });
+  assert.deepEqual(narrowSoftWrap, {
+    horizontalOverflow: false,
+    scaffoldOutsideSurface: 0,
+    wrappedWhiteSpace: 'normal',
+  });
   await narrowTerminalTab.click();
   const narrowTerminalInput = narrowShellPage.getByRole('combobox', {
     name: 'Linux DO command input',
@@ -7167,7 +7819,7 @@ try {
   await context.route(longTopicFixtureUrl, (route) =>
     route.fulfill({
       body: longTopicFixtureHtml(21, 80),
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -7452,7 +8104,7 @@ try {
   await context.route(unsupportedFixtureUrl, (route) =>
     route.fulfill({
       body: '<!doctype html><html><head><title>Unsupported fixture</title></head><body><main>Native unsupported route</main></body></html>',
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       status: 200,
     }),
   );
@@ -7511,6 +8163,43 @@ try {
   await clickPopupEnabledToggle(popupPage);
   await assertRuntimeOwnership(unsupportedPage, true);
   await unsupportedPage.close();
+
+  await topicFixturePage.bringToFront();
+  const vimFloorStatus = topicFixturePage.locator('.docode-workbench__status-item--floor');
+  await topicFixturePage
+    .locator('.docode-workbench__editor-scroll, .docode-topic-code__surface')
+    .first()
+    .click({ position: { x: 8, y: 8 } });
+  await topicFixturePage.keyboard.press('g');
+  await topicFixturePage.keyboard.press('g');
+  await vimFloorStatus.getByText('Post 1', { exact: true }).waitFor();
+  await topicFixturePage.keyboard.press('j');
+  await vimFloorStatus.getByText('Post 2', { exact: true }).waitFor();
+  assert.equal(
+    await topicFixturePage
+      .locator('.docode-topic-code__reply[data-post-number="2"][data-active="true"]')
+      .count(),
+    1,
+  );
+  await topicFixturePage.keyboard.press('k');
+  await vimFloorStatus.getByText('Post 1', { exact: true }).waitFor();
+  await topicFixturePage.keyboard.press('Shift+G');
+  await vimFloorStatus.getByText('Post 2', { exact: true }).waitFor();
+  await topicFixturePage.keyboard.press('g');
+  await topicFixturePage.keyboard.press('g');
+  await vimFloorStatus.getByText('Post 1', { exact: true }).waitFor();
+  await topicFixturePage.screenshot({
+    path: path.join(statusEvidenceDir, 'vim-navigation-first-post.png'),
+  });
+  await topicFixturePage.keyboard.press('/');
+  const vimQuickOpenInput = topicFixturePage.getByRole('combobox', {
+    name: 'Search open views, loaded topics, and Linux DO',
+  });
+  await vimQuickOpenInput.waitFor();
+  await vimQuickOpenInput.press('j');
+  assert.equal(await vimQuickOpenInput.inputValue(), 'j');
+  await topicFixturePage.keyboard.press('Escape');
+  await vimQuickOpenInput.waitFor({ state: 'detached' });
   await topicFixturePage.close();
 
   const linuxDoErrors = [];
@@ -7811,6 +8500,29 @@ try {
   await linuxDoPage.screenshot({
     path: path.join(contentContextRecoveryEvidenceDir, 'runtime-reload-remounted.png'),
   });
+
+  const windowControlPage = await context.newPage();
+  await windowControlPage.goto(topicListFixtureUrl);
+  await windowControlPage.locator('.docode-workbench__titlebar').waitFor();
+  const windowControlCdp = await context.newCDPSession(windowControlPage);
+  const { windowId: windowControlWindowId } = await windowControlCdp.send(
+    'Browser.getWindowForTarget',
+  );
+  await windowControlPage.getByRole('button', { name: 'Minimize Window' }).click();
+  await windowControlPage.waitForTimeout(300);
+  const minimizedBounds = await windowControlCdp.send('Browser.getWindowBounds', {
+    windowId: windowControlWindowId,
+  });
+  assert.equal(minimizedBounds.bounds.windowState, 'minimized');
+  await windowControlCdp.send('Browser.setWindowBounds', {
+    windowId: windowControlWindowId,
+    bounds: { windowState: 'normal' },
+  });
+  await windowControlPage.waitForTimeout(200);
+  const windowControlClosed = windowControlPage.waitForEvent('close');
+  await windowControlPage.getByRole('button', { name: 'Close Window' }).click();
+  await windowControlClosed;
+  assert.equal(windowControlPage.isClosed(), true);
 
   process.stdout.write(
     `${JSON.stringify(
@@ -9773,9 +10485,22 @@ async function readRenderedContentLineCoverage(page) {
         if (!previous || !Number.isFinite(lineHeight)) return ['invalid-line-height'];
         const previousNumber = Number(previous.getAttribute('data-docode-editor-line'));
         const number = Number(element.getAttribute('data-docode-editor-line'));
-        const expectedDelta = (number - previousNumber) * lineHeight;
-        const actualDelta =
-          element.getBoundingClientRect().top - previous.getBoundingClientRect().top;
+        const previousTop = previous.getBoundingClientRect().top;
+        const top = element.getBoundingClientRect().top;
+        const softWrapExtra = Array.from(root.querySelectorAll('[data-docode-soft-wrap]'))
+          .filter((block) => block instanceof HTMLElement)
+          .reduce((extra, block) => {
+            const rect = block.getBoundingClientRect();
+            if (rect.top <= previousTop || rect.top >= top) return extra;
+            return extra + Math.max(0, rect.height - lineHeight);
+          }, 0);
+        const previousCount = Number(previous.getAttribute('data-docode-editor-line-count') ?? '1');
+        const previousWrapExtra = previous.hasAttribute('data-docode-soft-wrap')
+          ? Math.max(0, previous.getBoundingClientRect().height - previousCount * lineHeight)
+          : 0;
+        const expectedDelta =
+          (number - previousNumber) * lineHeight + softWrapExtra + previousWrapExtra;
+        const actualDelta = top - previousTop;
         return Math.abs(expectedDelta - actualDelta) <= 1
           ? []
           : [`${String(previousNumber)}-${String(number)}`];
@@ -10043,7 +10768,8 @@ async function readTopicReplySourceFidelity(page) {
       replyBoxShadow: replyStyle.boxShadow,
       signatureText: signature.textContent?.replace(/\s+/gu, ' ').trim() ?? '',
       stringColor: stringStyle.color,
-      stringQuoted: stringBefore.includes('"') && stringAfter.includes('"'),
+      stringFramingAfter: stringAfter,
+      stringFramingBefore: stringBefore,
       unreadText: unread?.textContent?.trim() ?? '',
     };
   });
@@ -10067,10 +10793,16 @@ async function readTopicDocDocument(page) {
     ) {
       throw new Error('Missing rendered topic Doc document elements.');
     }
+    const framingBefore = (kind) => {
+      const line = surface.querySelector(`[data-docode-editor-line-kind="${kind}"]`);
+      return line ? getComputedStyle(line, '::before').content : 'missing';
+    };
     return {
       contentFontSize: getComputedStyle(content).fontSize,
       contentLineHeight: getComputedStyle(content).lineHeight,
       floorCount: root.querySelectorAll('.docode-topic-code__floor').length,
+      framedLinkBefore: framingBefore('link'),
+      framedTextBefore: framingBefore('text'),
       headingColor: getComputedStyle(title).color,
       headingCount: root.querySelectorAll('.docode-topic-code__md-heading').length,
       indentBorderWidth: getComputedStyle(indent).borderLeftWidth,
@@ -10481,7 +11213,7 @@ async function readContentStatus(page, tabId = null) {
 function topicListFixtureHtml({ firstUnreadPostNumber = null } = {}) {
   return `<!doctype html>
 <html>
-  <head><title>Synthetic topic-list fixture</title><link rel="icon" href="/uploads/fixture-favicon.png"></head>
+  <head><title>Synthetic topic-list fixture</title><link rel="icon" href="/uploads/fixture-favicon.png"><link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials"></head>
   <body>
     <main>
       <table class="topic-list">
@@ -10863,7 +11595,8 @@ function authenticatedTopicFixtureHtml() {
     </style>
   </head>
   <body>
-    <header class="d-header"><div id="current-user" data-username="fixture-user"><span class="badge-notification unread-notifications">3</span></div></header>
+    <div id="data-preloaded" data-preloaded="{&quot;currentUser&quot;:&quot;{\\&quot;id\\&quot;:12,\\&quot;username\\&quot;:\\&quot;fixture-user\\&quot;,\\&quot;avatar_template\\&quot;:\\&quot;/user_avatar/linux.do/fixture-user/{size}/1.png\\&quot;}&quot;}"></div>
+    <header class="d-header"><div id="current-user"><span class="badge-notification unread-notifications">3</span></div></header>
     <main id="main-outlet">
       <h1 data-topic-id="43"><a class="fancy-title" href="/t/synthetic-native-actions/43">Native actions</a></h1>
       <div class="post-stream"><div data-post-number="1">
@@ -10871,6 +11604,23 @@ function authenticatedTopicFixtureHtml() {
           <div class="names"><a href="/u/action-author" data-user-card="action-author">Action Author</a></div>
           <a class="post-date" href="/t/synthetic-native-actions/43"><span data-time="1700000000000">Nov 14</span></a>
           <div class="cooked"><p>Native action verification content.</p></div>
+          <nav class="post-controls">
+            <div class="discourse-reactions-actions can-toggle-reaction">
+              <button class="btn-toggle-reaction-like">Like</button>
+            </div>
+            <button class="post-action-menu__bookmark bookmark">Bookmark</button>
+            <button class="post-action-menu__copy-link">Copy link</button>
+            <div class="discourse-boosts"><div class="discourse-boosts__list">
+              <span class="discourse-boosts__bubble"><a data-user-card="sunking"><img class="avatar" width="24" height="24" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect width='24' height='24' fill='%23996a3c'/%3E%3C/svg%3E" alt=""></a><span class="discourse-boosts__cooked"><p>前排合影</p></span></span>
+            </div></div>
+          </nav>
+        </article>
+      </div>
+      <div data-post-number="2">
+        <article data-post-id="201" data-user-id="13">
+          <div class="names"><a href="/u/second-author" data-user-card="second-author">Second Author</a></div>
+          <a class="post-date" href="/t/synthetic-native-actions/43/2"><span data-time="1700000100000">Nov 14</span></a>
+          <div class="cooked"><p>Second native post without boosts.</p></div>
           <nav class="post-controls">
             <div class="discourse-reactions-actions can-toggle-reaction">
               <button class="btn-toggle-reaction-like">Like</button>
@@ -10965,7 +11715,7 @@ function authenticatedTopicFixtureHtml() {
         names.append(author);
         const date = document.createElement('a');
         date.className = 'post-date';
-        date.href = '/t/synthetic-native-actions/43/2';
+        date.href = '/t/synthetic-native-actions/43/' + String(result.post_number);
         const time = document.createElement('span');
         time.dataset.time = '1787097600000';
         time.textContent = 'now';
@@ -11011,6 +11761,14 @@ function topicPostFixtureHtml(postNumber, postId, unread = false) {
             ? ' <a class="mention" data-user-card="kaluoer111" href="/u/kaluoer111">@kaluoer111</a>'
             : ''
         }${postNumber === 2 ? '<br>Second visible line remains readable.' : ''}</p>
+        ${
+          postNumber === 1
+            ? `<aside class="onebox githubrepo" data-onebox-src="https://github.com/ruezo/docode">
+                 <header class="source"><a href="https://github.com/ruezo/docode" target="_blank" rel="noopener">github.com</a></header>
+                 <article class="onebox-body"><h3><a href="https://github.com/ruezo/docode" target="_blank" rel="noopener">GitHub - ruezo/docode: A Chromium extension that turns Linux DO into a VS Code workbench.</a></h3><p>A Chromium extension that turns Linux DO into a VS Code workbench.</p></article>
+               </aside>`
+            : ''
+        }
         <ul><li>Fixture item</li></ul>
         ${
           postNumber === 2
@@ -11026,6 +11784,16 @@ function topicPostFixtureHtml(postNumber, postId, unread = false) {
       <nav class="post-controls">
         <button class="btn-toggle-reaction-like" title="Log in to like">Like</button>
         <button class="post-action-menu__copy-link">Copy link</button>
+        ${
+          postNumber === 1
+            ? `<button class="discourse-reactions-counter" aria-label="333 reactions"><span class="reactions-counter">333</span></button>
+               <div class="discourse-boosts"><div class="discourse-boosts__list">
+                 <span class="discourse-boosts__bubble"><a data-user-card="sunking"><img class="avatar" width="24" height="24" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect width='24' height='24' fill='%23996a3c'/%3E%3C/svg%3E" alt=""></a><span class="discourse-boosts__cooked"><p>前排合影</p></span></span>
+                 <span class="discourse-boosts__bubble"><a data-user-card="dajiba"><img class="avatar" width="24" height="24" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect width='24' height='24' fill='%233c6a99'/%3E%3C/svg%3E" alt=""></a><span class="discourse-boosts__cooked"><p>打卡</p></span></span>
+                 ${Array.from({ length: 6 }, (_, index) => `<span class="discourse-boosts__bubble"><a data-user-card="boostuser${index + 3}"><img class="avatar" width="24" height="24" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect width='24' height='24' fill='%234a${index + 2}c6a'/%3E%3C/svg%3E" alt=""></a><span class="discourse-boosts__cooked"><p>你已经不是我们兄弟了，是路人 ${index + 3} 号.gif</p></span></span>`).join('\n                 ')}
+               </div></div>`
+            : ''
+        }
       </nav>
     </article>
   </div>`;

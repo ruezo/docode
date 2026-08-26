@@ -21,6 +21,21 @@ export default defineConfig({
       },
       default_title: 'DOCode',
     },
+    web_accessible_resources: [
+      {
+        matches: ['https://linux.do/*'],
+        resources: ['docode.webmanifest'],
+      },
+    ],
+    commands: {
+      'toggle-docode': {
+        description: 'Toggle DOCode workbench on Linux DO',
+        suggested_key: {
+          default: 'Alt+Shift+D',
+          mac: 'MacCtrl+Shift+D',
+        },
+      },
+    },
   },
   vite: () => ({ build: { sourcemap: false } }),
 });

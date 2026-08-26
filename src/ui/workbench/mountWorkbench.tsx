@@ -14,7 +14,12 @@ import {
 } from '../../linuxdo/postActionAdapter';
 import { LinuxDoSearchAdapter } from '../../linuxdo/searchAdapter';
 import { LinuxDoExplorerTopicLoader } from '../../linuxdo/explorerTopicLoader';
+import { LinuxDoBoostApiClient } from '../../linuxdo/boostApiClient';
 import { LinuxDoNotificationsLoader } from '../../linuxdo/notificationsLoader';
+import {
+  LinuxDoTrustLevelLoader,
+  type TrustLevelLoadOutcome,
+} from '../../linuxdo/trustLevelLoader';
 import { LinuxDoTaxonomyLoader } from '../../linuxdo/taxonomyLoader';
 import { installWorkbenchSpaNavigation } from '../../linuxdo/spaNavigation';
 import { LinuxDoTopicListPaginator } from '../../linuxdo/topicListPaginator';
@@ -22,6 +27,7 @@ import { LinuxDoTopicPaginator } from '../../linuxdo/topicPaginator';
 import {
   detectLinuxDoCurrentUser,
   detectLinuxDoUnreadNotifications,
+  readLinuxDoCurrentUserAvatarUrl,
 } from '../../linuxdo/capabilities';
 import { createBrowseHistoryStore } from '../../settings/browseHistoryStore';
 import type { WorkbenchAppearancePreference } from '../../settings/workbenchAppearancePreference';
@@ -33,8 +39,13 @@ import '../icons/codicon.css';
 import '../icons/setiFileIcon.css';
 import '../theme/darkModern.css';
 import '../theme/lightModern.css';
+import '../theme/monokai.css';
+import '../theme/dracula.css';
+import '../theme/githubLight.css';
+import '../theme/solarizedDark.css';
 import '../hover/workbenchTooltip.css';
 import '../settings/settingsEditor.css';
+import '../../views/trust/trustLevelPanel.css';
 import { WorkbenchShell } from './WorkbenchShell';
 import { createWorkbenchViewContext } from './workbenchContext';
 import { createWorkbenchViewSnapshot } from './workbenchSurfaceState';
@@ -108,6 +119,17 @@ export function mountWorkbench(
   const search = new LinuxDoSearchAdapter(document);
   const explorerTopics = new LinuxDoExplorerTopicLoader(document);
   const notificationsLoader = new LinuxDoNotificationsLoader(document);
+  const trustLevelLoader = new LinuxDoTrustLevelLoader(document);
+  const boostApiClient = new LinuxDoBoostApiClient(document);
+  const sendBoost = (postId: number, raw: string, signal: AbortSignal) =>
+    boostApiClient.create(postId, raw, signal);
+  const loadTrustLevel = (signal: AbortSignal): Promise<TrustLevelLoadOutcome> => {
+    const trustUser = detectLinuxDoCurrentUser(document);
+    if (trustUser.state !== 'logged-in' || !trustUser.username) {
+      return Promise.resolve({ kind: 'authentication-required' });
+    }
+    return trustLevelLoader.load(trustUser.username, signal);
+  };
   const taxonomyLoader = new LinuxDoTaxonomyLoader(document);
   const browseHistory = createBrowseHistoryStore();
   const topicListPaginator = new LinuxDoTopicListPaginator(document);
@@ -332,6 +354,9 @@ export function mountWorkbench(
         surfaceState={view.surfaceState}
         topicDetailDocument={view.topicDetailDocument}
         topicListDocument={view.topicListDocument}
+        currentUserAvatarUrl={readLinuxDoCurrentUserAvatarUrl(document)}
+        onLoadTrustLevel={loadTrustLevel}
+        onSendBoost={sendBoost}
         terminalUsername={currentUser.username}
         unreadNotifications={detectLinuxDoUnreadNotifications(document)}
         viewRevision={viewRevision}

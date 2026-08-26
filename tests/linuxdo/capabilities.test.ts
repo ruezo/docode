@@ -40,6 +40,30 @@ describe('detectLinuxDoCapabilities', () => {
     });
   });
 
+  it('recovers the username from the Discourse preloaded store when the header omits it', () => {
+    document.body.innerHTML =
+      '<div id="data-preloaded" data-preloaded="{&quot;currentUser&quot;:&quot;{\\&quot;id\\&quot;:9,\\&quot;username\\&quot;:\\&quot;Preloaded.User\\&quot;}&quot;}"></div>' +
+      '<header class="d-header"><div id="current-user"><button id="toggle-current-user"></button></div></header>';
+    expect(detectLinuxDoCurrentUser(document)).toEqual({
+      state: 'logged-in',
+      username: 'Preloaded.User',
+    });
+
+    document.body.innerHTML =
+      '<div id="data-preloaded" data-preloaded="{&quot;currentUser&quot;:{&quot;username&quot;:&quot;object-user&quot;}}"></div>';
+    expect(detectLinuxDoCurrentUser(document)).toEqual({
+      state: 'logged-in',
+      username: 'object-user',
+    });
+
+    document.body.innerHTML =
+      '<div id="data-preloaded" data-preloaded="{&quot;topic_42&quot;:&quot;{}&quot;}"></div>';
+    expect(detectLinuxDoCurrentUser(document)).toEqual({ state: 'unknown', username: null });
+
+    document.body.innerHTML = '<div id="data-preloaded" data-preloaded="not json"></div>';
+    expect(detectLinuxDoCurrentUser(document)).toEqual({ state: 'unknown', username: null });
+  });
+
   it('detects Composer state without enumerating the loaded post window', () => {
     document.body.innerHTML = capabilityFixture({ composerOpen: true, user: 'logged-in' });
     const queryAll = vi.spyOn(document, 'querySelectorAll');

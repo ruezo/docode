@@ -36,10 +36,20 @@ assert.equal(
   undefined,
   'External extension messaging must remain unavailable.',
 );
-assert.equal(
+assert.deepEqual(
+  manifest.commands,
+  {
+    'toggle-docode': {
+      description: 'Toggle DOCode workbench on Linux DO',
+      suggested_key: { default: 'Alt+Shift+D', mac: 'MacCtrl+Shift+D' },
+    },
+  },
+  'Only the reviewed workbench toggle command may be registered.',
+);
+assert.deepEqual(
   manifest.web_accessible_resources,
-  undefined,
-  'No runtime asset needs to be exposed to page scripts.',
+  [{ matches: ['https://linux.do/*'], resources: ['docode.webmanifest'] }],
+  'Only the reviewed static app manifest may be exposed, and only to Linux DO pages.',
 );
 assert.equal(
   manifest.content_scripts?.length,
@@ -132,6 +142,7 @@ const networkFiles = matchingFiles(
 assert.deepEqual(
   networkFiles,
   [
+    'src/linuxdo/boostApiClient.ts',
     'src/linuxdo/explorerTopicLoader.ts',
     'src/linuxdo/notificationsLoader.ts',
     'src/linuxdo/postActionApiClient.ts',
@@ -139,8 +150,9 @@ assert.deepEqual(
     'src/linuxdo/taxonomyLoader.ts',
     'src/linuxdo/topicListPaginator.ts',
     'src/linuxdo/topicPaginator.ts',
+    'src/linuxdo/trustLevelLoader.ts',
   ],
-  'Only the reviewed same-origin Linux DO Explorer, Search, notifications, taxonomy, and pagination adapters may initiate network requests.',
+  'Only the reviewed same-origin Linux DO Explorer, Search, notifications, taxonomy, trust-level, boost, and pagination adapters may initiate network requests.',
 );
 const taxonomySource =
   sourceText.get(path.join(projectRoot, 'src/linuxdo/taxonomyLoader.ts')) ?? '';
@@ -321,9 +333,34 @@ assert.match(
   /browser\.windows\.update\(windowId, \{ state \}\)/u,
   'The background worker may update only the reviewed sender-window state.',
 );
+assert.match(
+  backgroundSource,
+  /browser\.tabs\.query\(query\)/u,
+  'The background worker may query only the active tab for the reviewed toggle command.',
+);
+assert.match(
+  backgroundSource,
+  /browser\.tabs\.sendMessage\(tabId, request\)/u,
+  'The background worker may message only the DOCode content script for the toggle command.',
+);
+assert.match(
+  backgroundSource,
+  /browser\.tabs\.remove\(tabId\)/u,
+  'The background worker may close only the sender tab for the reviewed close control.',
+);
+assert.match(
+  backgroundSource,
+  /browser\.windows\.update\(windowId, \{ state: 'minimized' \}\)/u,
+  'The background worker may minimize only the sender window for the reviewed minimize control.',
+);
+assert.equal(
+  (backgroundSource.match(/browser\.tabs\./gu) ?? []).length,
+  3,
+  'The background worker must not expand beyond the three reviewed tabs calls.',
+);
 assert.doesNotMatch(
   backgroundSource,
-  /browser\.(?:cookies|history|tabs|webRequest)\b/u,
+  /browser\.(?:cookies|history|webRequest)\b/u,
   'The background worker must not expand into unrelated browser capabilities.',
 );
 const windowFullscreenMessageSource =

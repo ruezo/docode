@@ -68,6 +68,15 @@ const PAGE_SIZE = 20;
 const MAX_EMPTY_PAGE_HOPS = 4;
 const BLOCKED_CONTENT_SELECTOR =
   'base, button, embed, form, iframe, input, link, meta, object, script, style, textarea';
+const DOCODE_ARTIFACT_SELECTOR = [
+  '.docode-topic-code__active-line-overlay',
+  '.docode-topic-code__content-decl',
+  '.docode-topic-code__content-fold',
+  '.docode-topic-code__image-trigger',
+  '.docode-topic-code__line-number-layer',
+  '.docode-topic-code__onebox-link',
+  '.docode-topic-code__scaffold-line',
+].join(', ');
 const URL_ATTRIBUTES = new Set(['action', 'formaction', 'href', 'poster', 'src', 'xlink:href']);
 
 export class LinuxDoTopicPaginator {
@@ -409,7 +418,9 @@ export class LinuxDoTopicPaginator {
   }
 
   #readPreloadedTopic(route: TopicRoute) {
-    const serialized = this.#document.querySelector('#data-preloaded')?.textContent;
+    const preloadedElement = this.#document.querySelector('#data-preloaded');
+    const serialized =
+      preloadedElement?.getAttribute('data-preloaded') ?? preloadedElement?.textContent;
     if (!serialized) return null;
     try {
       const registry = JSON.parse(serialized) as unknown;
@@ -849,6 +860,9 @@ function createPostElement(
   article.id = `post_${String(post.number)}`;
   article.dataset.postId = String(post.id);
   if (post.userId !== null) article.dataset.userId = String(post.userId);
+  if (post.reactionCount > 0) {
+    article.setAttribute('data-docode-reaction-count', String(post.reactionCount));
+  }
 
   const names = document.createElement('div');
   names.className = 'names';
@@ -903,6 +917,9 @@ function createCookedContent(document: Document, cooked: string): HTMLElement {
   parsed.body.querySelectorAll(BLOCKED_CONTENT_SELECTOR).forEach((element) => {
     element.remove();
   });
+  parsed.body.querySelectorAll(DOCODE_ARTIFACT_SELECTOR).forEach((element) => {
+    element.remove();
+  });
   parsed.body.querySelectorAll<HTMLElement>('*').forEach((element) => {
     sanitizeElement(element);
   });
@@ -918,7 +935,12 @@ function createCookedContent(document: Document, cooked: string): HTMLElement {
 function sanitizeElement(element: HTMLElement): void {
   Array.from(element.attributes).forEach((attribute) => {
     const name = attribute.name.toLowerCase();
-    if (name.startsWith('on') || name === 'srcdoc' || name === 'style') {
+    if (
+      name.startsWith('on') ||
+      name.startsWith('data-docode-') ||
+      name === 'srcdoc' ||
+      name === 'style'
+    ) {
       element.removeAttribute(attribute.name);
       return;
     }

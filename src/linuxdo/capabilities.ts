@@ -344,9 +344,15 @@ function detectCurrentUser(
         postNumber: null,
       });
     }
-    return { state: 'logged-in', username: extractCurrentUsername(document, currentUserRoot) };
+    return {
+      state: 'logged-in',
+      username:
+        extractCurrentUsername(document, currentUserRoot) ?? readPreloadedCurrentUsername(document),
+    };
   }
   if (loginControl) return { state: 'logged-out', username: null };
+  const preloadedUsername = readPreloadedCurrentUsername(document);
+  if (preloadedUsername) return { state: 'logged-in', username: preloadedUsername };
   diagnostics.push({
     code: 'current-user-unresolved',
     feature: 'current-user',
@@ -366,6 +372,58 @@ function extractCurrentUsername(document: Document, root: HTMLElement): string |
   } catch {
     return null;
   }
+}
+
+export function readLinuxDoCurrentUserAvatarUrl(document: Document): string | null {
+  const preloaded = readPreloadedCurrentUser(document);
+  if (preloaded && typeof preloaded.avatar_template === 'string') {
+    try {
+      const url = new URL(
+        preloaded.avatar_template.replace('{size}', '24'),
+        document.location.origin,
+      );
+      if (url.protocol === 'https:' || url.protocol === 'http:') return url.href;
+    } catch {
+      /* fall through to the header avatar */
+    }
+  }
+  const headerAvatar = document.querySelector<HTMLImageElement>(
+    `${CAPABILITY_SELECTORS.currentUser.split(', ').join(' img.avatar, ')} img.avatar`,
+  );
+  if (!headerAvatar?.src) return null;
+  try {
+    const url = new URL(headerAvatar.src, document.location.origin);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function readPreloadedCurrentUser(document: Document): Record<string, unknown> | null {
+  const element = document.querySelector('#data-preloaded');
+  if (!element) return null;
+  const serialized = element.getAttribute('data-preloaded') ?? element.textContent;
+  if (!serialized) return null;
+  try {
+    const registry = JSON.parse(serialized) as unknown;
+    if (!registry || typeof registry !== 'object' || Array.isArray(registry)) return null;
+    const currentUserPayload = Reflect.get(registry, 'currentUser') as unknown;
+    const currentUser =
+      typeof currentUserPayload === 'string'
+        ? (JSON.parse(currentUserPayload) as unknown)
+        : currentUserPayload;
+    if (!currentUser || typeof currentUser !== 'object' || Array.isArray(currentUser)) return null;
+    return currentUser as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+export function readPreloadedCurrentUsername(document: Document): string | null {
+  const currentUser = readPreloadedCurrentUser(document);
+  if (!currentUser) return null;
+  const username = currentUser.username;
+  return typeof username === 'string' ? normalizeUsername(username) : null;
 }
 
 function extractPostCapabilities(

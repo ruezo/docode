@@ -93,13 +93,27 @@ describe('userCardAdapter', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects mismatched identities, foreign avatars, executable websites, and failures', async () => {
+  it('rejects mismatched identities, insecure avatars, executable websites, and failures', async () => {
     expect(
       extractLinuxDoUserCard(document, { user: { username: 'different-user' } }, 'fist2005'),
     ).toBeNull();
     expect(resolveLinuxDoAvatarUrl('javascript:alert(1)', document.location.href, 48)).toBeNull();
     expect(
-      resolveLinuxDoAvatarUrl('https://example.com/avatar.png', document.location.href, 48),
+      resolveLinuxDoAvatarUrl(
+        'https://cdn.example.com/avatar/{size}.png',
+        document.location.href,
+        48,
+      ),
+    ).toBe('https://cdn.example.com/avatar/48.png');
+    expect(
+      resolveLinuxDoAvatarUrl(
+        'https://user:secret@cdn.example.com/avatar.png',
+        document.location.href,
+        48,
+      ),
+    ).toBeNull();
+    expect(
+      resolveLinuxDoAvatarUrl('http://cdn.example.com/avatar.png', document.location.href, 48),
     ).toBeNull();
     expect(
       extractLinuxDoUserCard(

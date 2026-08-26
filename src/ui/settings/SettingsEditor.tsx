@@ -11,7 +11,9 @@ import {
 import { MAXIMUM_BROWSE_HISTORY_LIMIT } from '../../settings/browseHistoryStore';
 import {
   DEFAULT_WORKBENCH_APPEARANCE,
+  WORKBENCH_THEMES,
   type WorkbenchAppearancePreference,
+  type WorkbenchThemeId,
   type WorkbenchThemePreference,
 } from '../../settings/workbenchAppearancePreference';
 import { Codicon } from '../icons/codicon';
@@ -22,7 +24,7 @@ type AppearanceKey = keyof WorkbenchAppearancePreference;
 interface SettingsEditorProps {
   readonly onChange: (preference: WorkbenchAppearancePreference) => void;
   readonly preference: WorkbenchAppearancePreference;
-  readonly resolvedTheme: 'dark' | 'light';
+  readonly resolvedTheme: WorkbenchThemeId;
 }
 
 interface SelectOption {
@@ -36,15 +38,11 @@ const SETTING_SEARCH_TEXT: Readonly<Record<AppearanceKey, string>> = {
   historyLimit:
     'workbench browse history limit source control graph records visited topics maximum disable',
   showTopicAvatars: 'editor topic detail post body avatar author profile image',
-  theme: 'workbench appearance color theme dark light system operating system',
+  theme:
+    'workbench appearance color theme dark light system operating system monokai dracula github solarized',
   topicDetailBodyColor: 'editor topic detail post body foreground font color',
   topicListBodyColor: 'editor topic list body foreground font color latest unread new hot',
 };
-
-const THEME_COLORS = {
-  dark: { topicDetailBodyColor: '#ce9178', topicListBodyColor: '#dcdcaa' },
-  light: { topicDetailBodyColor: '#a31515', topicListBodyColor: '#795e26' },
-} as const;
 
 const THEME_OPTIONS: readonly SelectOption[] = [
   {
@@ -61,6 +59,26 @@ const THEME_OPTIONS: readonly SelectOption[] = [
     description: 'Uses the Light Modern workbench palette regardless of the operating system.',
     label: 'Light Modern',
     value: 'light',
+  },
+  {
+    description: 'Uses the classic Monokai palette with its pink, green, and yellow accents.',
+    label: 'Monokai',
+    value: 'monokai',
+  },
+  {
+    description: 'Uses the Dracula palette with its purple, pink, and cyan accents.',
+    label: 'Dracula',
+    value: 'dracula',
+  },
+  {
+    description: 'Uses the GitHub Light palette that mirrors github.com source views.',
+    label: 'GitHub Light',
+    value: 'github-light',
+  },
+  {
+    description: 'Uses the Solarized Dark palette with its calm teal and amber accents.',
+    label: 'Solarized Dark',
+    value: 'solarized-dark',
   },
 ];
 
@@ -89,7 +107,7 @@ export function SettingsEditor({ onChange, preference, resolvedTheme }: Settings
   const reset = (key: AppearanceKey) => {
     onChange({ ...preference, [key]: DEFAULT_WORKBENCH_APPEARANCE[key] });
   };
-  const effectiveColors = THEME_COLORS[resolvedTheme];
+  const effectiveColors = WORKBENCH_THEMES[resolvedTheme];
   const listColor =
     preference.topicListBodyColor === DEFAULT_WORKBENCH_APPEARANCE.topicListBodyColor
       ? effectiveColors.topicListBodyColor

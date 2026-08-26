@@ -3,6 +3,24 @@ import { describe, expect, it } from 'vitest';
 import { extractTopicJsonPage, extractTopicJsonPosts } from '../../src/linuxdo/topicJsonAdapter';
 
 describe('topicJsonAdapter', () => {
+  it('reads reaction counts from the reactions plugin fields', () => {
+    const posts = extractTopicJsonPosts(
+      {
+        post_stream: {
+          posts: [
+            post(100, 1, { reaction_users_count: 12 }),
+            post(101, 2, { reactions: [{ count: 3 }, { count: 4 }, { count: 'x' }] }),
+            post(102, 3, { reactions: 'invalid' }),
+          ],
+          stream: [100, 101, 102],
+        },
+      },
+      42,
+    );
+
+    expect(posts?.map(({ reactionCount }) => reactionCount)).toEqual([12, 7, 0]);
+  });
+
   it('validates the topic stream and normalizes same-topic posts', () => {
     const page = extractTopicJsonPage(
       {
@@ -27,6 +45,7 @@ describe('topicJsonAdapter', () => {
         displayName: 'user-1',
         id: 100,
         number: 1,
+        reactionCount: 0,
         replyToPostNumber: null,
         topicId: 42,
         userId: 1,
@@ -39,6 +58,7 @@ describe('topicJsonAdapter', () => {
         displayName: 'Alice Example',
         id: 101,
         number: 2,
+        reactionCount: 0,
         replyToPostNumber: null,
         topicId: 42,
         userId: null,

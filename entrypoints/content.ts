@@ -3,6 +3,10 @@ import { defineContentScript } from 'wxt/utils/define-content-script';
 
 import { LINUX_DO_MATCH_PATTERN } from '../src/linuxdo/host';
 import { createContentMessageHandler } from '../src/messaging/contentMessages';
+import {
+  configureAppManifestDisguise,
+  startAppManifestDisguise,
+} from '../src/runtime/appManifestDisguise';
 import { monitorContentScriptContext } from '../src/runtime/contentContextMonitor';
 import { ContentController } from '../src/runtime/contentController';
 import { disableContentRuntime } from '../src/runtime/contentRuntime';
@@ -11,6 +15,8 @@ export default defineContentScript({
   matches: [LINUX_DO_MATCH_PATTERN],
   runAt: 'document_start',
   async main(context) {
+    configureAppManifestDisguise(browser.runtime.getURL('/docode.webmanifest'));
+    startAppManifestDisguise(document);
     monitorContentScriptContext(context);
 
     const controller = new ContentController(document, window.location);

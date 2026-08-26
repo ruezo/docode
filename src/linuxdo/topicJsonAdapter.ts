@@ -7,6 +7,7 @@ export interface TopicJsonPost {
   readonly displayName: string;
   readonly id: number;
   readonly number: number;
+  readonly reactionCount: number;
   readonly replyToPostNumber: number | null;
   readonly topicId: number;
   readonly userId: number | null;
@@ -82,11 +83,24 @@ function extractPost(value: unknown, topicId: number): TopicJsonPost | null {
     displayName,
     id,
     number,
+    reactionCount: extractReactionCount(post),
     replyToPostNumber,
     topicId,
     userId,
     username,
   };
+}
+
+function extractReactionCount(post: JsonRecord): number {
+  const direct = toPositiveInteger(post.reaction_users_count);
+  if (direct !== null) return direct;
+  if (!Array.isArray(post.reactions)) return 0;
+  let total = 0;
+  for (const entry of post.reactions as unknown[]) {
+    const count = toPositiveInteger(toRecord(entry)?.count);
+    if (count !== null) total += count;
+  }
+  return total;
 }
 
 function normalizeAvatarTemplate(value: unknown): string | null {

@@ -80,7 +80,7 @@ export function createWindowFullscreenMessageController(
   };
 }
 
-function isTrustedLinuxDoSender(sender: Browser.runtime.MessageSender): boolean {
+export function isTrustedLinuxDoSender(sender: Browser.runtime.MessageSender): boolean {
   if (sender.frameId !== undefined && sender.frameId !== 0) return false;
   return (
     (typeof sender.url === 'string' && isLinuxDoUrl(sender.url)) ||

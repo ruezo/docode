@@ -6,6 +6,10 @@ import {
   type WorkbenchOperatingSystem,
 } from '../../platform/workbenchPlatform';
 import {
+  browserWindowCommandClient,
+  type WindowCommandClient,
+} from '../../platform/browserWindowCommands';
+import {
   browserWindowFullscreenClient,
   type WindowFullscreenClient,
 } from '../../platform/browserWindowFullscreen';
@@ -26,6 +30,7 @@ interface WorkbenchTitleBarProps {
   readonly quickOpenAriaKeyShortcuts?: string | undefined;
   readonly quickOpenTooltip?: string;
   readonly sidebarOpen: boolean;
+  readonly windowCommandClient?: WindowCommandClient;
   readonly windowFullscreenClient?: WindowFullscreenClient;
 }
 
@@ -46,6 +51,7 @@ export function WorkbenchTitleBar({
   quickOpenAriaKeyShortcuts,
   quickOpenTooltip,
   sidebarOpen,
+  windowCommandClient = browserWindowCommandClient,
   windowFullscreenClient = browserWindowFullscreenClient,
 }: WorkbenchTitleBarProps) {
   const [layoutMenuPosition, setLayoutMenuPosition] = useState<{
@@ -106,7 +112,9 @@ export function WorkbenchTitleBar({
     >
       <div className="docode-workbench__titlebar-left">
         <ProductMark />
-        {platform === 'mac' ? <MacTrafficLights client={windowFullscreenClient} /> : null}
+        {platform === 'mac' ? (
+          <MacTrafficLights client={windowFullscreenClient} commandClient={windowCommandClient} />
+        ) : null}
         <WindowsMenuBar />
       </div>
       <div className="docode-workbench__titlebar-center">
@@ -196,7 +204,12 @@ export function WorkbenchTitleBar({
             <Codicon name="layout-sidebar-right-off" />
           </button>
         </div>
-        {platform === 'windows' ? <WindowsWindowControls client={windowFullscreenClient} /> : null}
+        {platform === 'windows' ? (
+          <WindowsWindowControls
+            client={windowFullscreenClient}
+            commandClient={windowCommandClient}
+          />
+        ) : null}
       </div>
       {layoutMenuPosition ? (
         <LayoutMenu
@@ -346,6 +359,32 @@ function ProductMark() {
 
 interface WindowControlsProps {
   readonly client: WindowFullscreenClient;
+  readonly commandClient: WindowCommandClient;
+}
+
+interface WorkbenchWindowCommands {
+  readonly close: () => void;
+  readonly error: string | null;
+  readonly minimize: () => void;
+}
+
+function useWindowCommands(commandClient: WindowCommandClient): WorkbenchWindowCommands {
+  const [error, setError] = useState<string | null>(null);
+  return {
+    close: () => {
+      setError(null);
+      void commandClient.closeWindow().catch(() => {
+        setError('Unable to close the window.');
+      });
+    },
+    error,
+    minimize: () => {
+      setError(null);
+      void commandClient.minimizeWindow().catch(() => {
+        setError('Unable to minimize the window.');
+      });
+    },
+  };
 }
 
 type FullscreenMode = 'document' | 'unsupported' | 'window';
@@ -478,17 +517,40 @@ function useWorkbenchFullscreen(client: WindowFullscreenClient): WorkbenchFullsc
   };
 }
 
-function MacTrafficLights({ client }: WindowControlsProps) {
+function MacTrafficLights({ client, commandClient }: WindowControlsProps) {
   const { active, error, hostRef, supported, toggle } = useWorkbenchFullscreen(client);
+  const commands = useWindowCommands(commandClient);
 
   return (
     <span className="docode-workbench__traffic-lights" ref={hostRef}>
-      <span aria-hidden="true" className="docode-workbench__traffic-light" data-tone="close">
-        <span className="docode-workbench__traffic-light-glyph" data-glyph="close" />
-      </span>
-      <span aria-hidden="true" className="docode-workbench__traffic-light" data-tone="minimize">
-        <span className="docode-workbench__traffic-light-glyph" data-glyph="minimize" />
-      </span>
+      <button
+        aria-label="Close Window"
+        className="docode-workbench__traffic-light"
+        data-docode-tooltip="Close Window"
+        data-tone="close"
+        onClick={commands.close}
+        type="button"
+      >
+        <span
+          aria-hidden="true"
+          className="docode-workbench__traffic-light-glyph"
+          data-glyph="close"
+        />
+      </button>
+      <button
+        aria-label="Minimize Window"
+        className="docode-workbench__traffic-light"
+        data-docode-tooltip="Minimize Window"
+        data-tone="minimize"
+        onClick={commands.minimize}
+        type="button"
+      >
+        <span
+          aria-hidden="true"
+          className="docode-workbench__traffic-light-glyph"
+          data-glyph="minimize"
+        />
+      </button>
       <button
         aria-label={fullscreenControlLabel(supported, active)}
         aria-pressed={active}
@@ -506,9 +568,9 @@ function MacTrafficLights({ client }: WindowControlsProps) {
           data-glyph="zoom"
         />
       </button>
-      {error ? (
+      {(error ?? commands.error) ? (
         <span aria-live="polite" className="docode-sr-only" role="status">
-          {error}
+          {error ?? commands.error}
         </span>
       ) : null}
     </span>
@@ -528,14 +590,21 @@ function WindowsMenuBar() {
   );
 }
 
-function WindowsWindowControls({ client }: WindowControlsProps) {
+function WindowsWindowControls({ client, commandClient }: WindowControlsProps) {
   const { active, error, hostRef, supported, toggle } = useWorkbenchFullscreen(client);
+  const commands = useWindowCommands(commandClient);
 
   return (
     <span className="docode-workbench__window-controls" ref={hostRef}>
-      <span aria-hidden="true" className="docode-workbench__window-control">
+      <button
+        aria-label="Minimize Window"
+        className="docode-workbench__window-control"
+        data-docode-tooltip="Minimize Window"
+        onClick={commands.minimize}
+        type="button"
+      >
         <Codicon name="chrome-minimize" />
-      </span>
+      </button>
       <button
         aria-label={fullscreenControlLabel(supported, active)}
         aria-pressed={active}
@@ -548,15 +617,18 @@ function WindowsWindowControls({ client }: WindowControlsProps) {
       >
         <Codicon name={active ? 'chrome-restore' : 'chrome-maximize'} />
       </button>
-      <span
-        aria-hidden="true"
+      <button
+        aria-label="Close Window"
         className="docode-workbench__window-control docode-workbench__window-control--close"
+        data-docode-tooltip="Close Window"
+        onClick={commands.close}
+        type="button"
       >
         <Codicon name="chrome-close" />
-      </span>
-      {error ? (
+      </button>
+      {(error ?? commands.error) ? (
         <span aria-live="polite" className="docode-sr-only" role="status">
-          {error}
+          {error ?? commands.error}
         </span>
       ) : null}
     </span>

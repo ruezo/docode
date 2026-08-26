@@ -123,7 +123,7 @@ export function resolveLinuxDoAvatarUrl(
   if (!candidate) return null;
   try {
     const url = new URL(candidate, baseHref);
-    return isLinuxDoLocation(url) ? url.href : null;
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : null;
   } catch {
     return null;
   }

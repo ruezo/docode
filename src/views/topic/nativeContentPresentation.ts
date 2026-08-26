@@ -1,6 +1,32 @@
 import type { NativePostContent } from '../../linuxdo/topicAdapter';
 import { NATIVE_CONTENT_TRANSFER_MOUNT_EVENT } from '../../runtime/nativeContentTransfer';
 import { presentNativeCodeBlocks } from './codeBlockPresentation';
+import {
+  NATIVE_INLINE_IMAGE_SELECTOR,
+  NATIVE_ONEBOX_SELECTOR,
+  NATIVE_SCAFFOLD_ATTRIBUTE,
+  countNativeElementLines,
+  getNativeImageLabel,
+  getNativeLineElements,
+  isGitHubHref,
+  readNativeContentLineKind,
+  readOneboxHref,
+  readOneboxLabel,
+} from './nativeContentLines';
+import type { ReplyCodePlan } from './replyCodePlan';
+import { resolveReplyCodeRegion } from './replyCodePlan';
+
+export {
+  countNativeContentLines,
+  summarizeNativeContentLines,
+  countNativeElementLines,
+  getNativeBlockLineElements,
+  isGitHubHref,
+  normalizeNativeLineText,
+  readNativeContentLineKind,
+  readOneboxHref,
+} from './nativeContentLines';
+export type { NativeContentLineKind, NativeContentLineSummary } from './nativeContentLines';
 
 const LINE_ATTRIBUTE = 'data-docode-editor-line';
 const LINE_COUNT_ATTRIBUTE = 'data-docode-editor-line-count';
@@ -20,34 +46,15 @@ const PREVIEW_HIDE_DELAY = 120;
 const IMAGE_SCALE_MIN = 0.05;
 const IMAGE_SCALE_MAX = 8;
 const IMAGE_WHEEL_SENSITIVITY = 0.002;
-const INLINE_IMAGE_SELECTOR = '.emoji, .avatar, [data-emoji]';
-const BLOCK_LINE_TAGS = new Set([
-  'blockquote',
-  'details',
-  'div',
-  'figure',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'hr',
-  'ol',
-  'p',
-  'pre',
-  'table',
-  'ul',
-]);
+const INLINE_IMAGE_SELECTOR = NATIVE_INLINE_IMAGE_SELECTOR;
+const ONEBOX_ATTRIBUTE = 'data-docode-onebox';
+const ONEBOX_SELECTOR = NATIVE_ONEBOX_SELECTOR;
+const CONTENT_ROLE_ATTRIBUTE = 'data-docode-content-role';
+const CONTENT_HIDDEN_ATTRIBUTE = 'data-docode-content-hidden';
+const ASSET_KIND_ATTRIBUTE = 'data-docode-asset-kind';
+const SOFT_WRAP_ATTRIBUTE = 'data-docode-soft-wrap';
+const FOLD_TOGGLE_ATTRIBUTE = 'data-docode-content-fold';
 const activeLineNumberLayers = new WeakMap<HTMLElement, () => void>();
-
-export type NativeContentLineKind = 'blank' | 'code' | 'heading' | 'media' | 'quote' | 'text';
-
-export interface NativeContentLineSummary {
-  readonly indent: number;
-  readonly kind: NativeContentLineKind;
-  readonly text: string;
-}
 
 interface ImageDragSession {
   readonly pointerId: number;
@@ -57,47 +64,38 @@ interface ImageDragSession {
   readonly startPanY: number;
 }
 
-export function countNativeContentLines(content: NativePostContent | null): number {
-  return content
-    ? getNativeLineElements(content).reduce(
-        (count, element) => count + nativeElementLineTexts(element).length,
-        0,
-      )
-    : 1;
-}
-
-export function summarizeNativeContentLines(
-  content: NativePostContent | null,
-): readonly NativeContentLineSummary[] {
-  if (!content) return [{ indent: 0, kind: 'text', text: 'Content unavailable' }];
-  return getNativeLineElements(content).flatMap((element) =>
-    nativeElementLineTexts(element).map((text) => ({
-      indent: nativeLineIndent(element),
-      kind: nativeLineKind(element),
-      text,
-    })),
-  );
+export interface ReplyCodeStructureOptions {
+  readonly expanded: boolean;
+  readonly onToggleFold?: (() => void) | undefined;
+  readonly plan: ReplyCodePlan;
 }
 
 export function presentNativeContent(
   content: NativePostContent,
   firstLine: number,
   workbenchRoot: HTMLElement,
+  codeStructure?: ReplyCodeStructureOptions | null,
 ): () => void {
-  const restoreLines = decorateLines(content, firstLine);
+  const structure = codeStructure ? applyReplyCodeStructure(content, codeStructure) : null;
+  const restoreLines = decorateLines(
+    structure?.lineElements ?? getNativeLineElements(content),
+    firstLine,
+  );
   const restoreCodeBlocks = presentNativeCodeBlocks(content.root);
+  const restoreOneboxes = decorateOneboxes(content.root);
   const restoreImages = decorateImages(content.root, workbenchRoot);
   const restoreLineNumbers = decorateLineNumbers(content.root);
   return () => {
     restoreLineNumbers();
     restoreImages();
+    restoreOneboxes();
     restoreCodeBlocks();
     restoreLines();
+    structure?.restore();
   };
 }
 
-function decorateLines(content: NativePostContent, firstLine: number): () => void {
-  const lines = getNativeLineElements(content);
+function decorateLines(lines: readonly HTMLElement[], firstLine: number): () => void {
   const previous = lines.map((element) => ({
     count: element.getAttribute(LINE_COUNT_ATTRIBUTE),
     kind: element.getAttribute(LINE_KIND_ATTRIBUTE),
@@ -108,10 +106,10 @@ function decorateLines(content: NativePostContent, firstLine: number): () => voi
   }));
   let nextLine = firstLine;
   lines.forEach((element) => {
-    const lineCount = nativeElementLineTexts(element).length;
+    const lineCount = countNativeElementLines(element);
     element.setAttribute(LINE_ATTRIBUTE, String(nextLine));
     element.setAttribute(LINE_COUNT_ATTRIBUTE, String(lineCount));
-    element.setAttribute(LINE_KIND_ATTRIBUTE, nativeLineKind(element));
+    element.setAttribute(LINE_KIND_ATTRIBUTE, readNativeContentLineKind(element));
     element.style.setProperty(LINE_SPAN_PROPERTY, String(lineCount));
     nextLine += lineCount;
   });
@@ -229,124 +227,43 @@ function readLineHeight(element: HTMLElement): number {
   return Number.isFinite(value) && value > 0 ? value : 20;
 }
 
-function getNativeLineElements(content: NativePostContent): HTMLElement[] {
-  return content.blocks.flatMap(({ element }) => getBlockLineElements(element));
-}
-
-function getBlockLineElements(element: HTMLElement): HTMLElement[] {
-  const tagName = element.tagName.toLowerCase();
-  if (element.matches('aside.quote')) {
-    const title = element.querySelector<HTMLElement>(':scope > .title');
-    const body = element.querySelector<HTMLElement>(':scope > blockquote');
-    const bodyLines = body ? getBlockLineElements(body) : [];
-    const lines = [...(title ? [title] : []), ...bodyLines];
-    return lines.length > 0 ? lines : [element];
-  }
-  if (tagName === 'ul' || tagName === 'ol') {
-    const items = Array.from(element.querySelectorAll<HTMLElement>('li'));
-    return items.length > 0 ? items : [element];
-  }
-  if (tagName === 'blockquote') {
-    const children = Array.from(element.children).filter(
-      (child): child is HTMLElement => child instanceof HTMLElement && isBlockLineElement(child),
-    );
-    return children.length > 0 ? children.flatMap(getBlockLineElements) : [element];
-  }
-  if (tagName === 'table') {
-    const rows = Array.from(element.querySelectorAll<HTMLElement>('tr'));
-    return rows.length > 0 ? rows : [element];
-  }
-  if (tagName === 'details') {
-    const children = Array.from(element.children).filter(
-      (child): child is HTMLElement => child instanceof HTMLElement,
-    );
-    return children.length > 0 ? children : [element];
-  }
-  return [element];
-}
-
-function isBlockLineElement(element: HTMLElement): boolean {
-  return BLOCK_LINE_TAGS.has(element.tagName.toLowerCase());
-}
-
-function nativeLineIndent(element: HTMLElement): number {
-  return element.matches('li, summary') || element.closest('blockquote') ? 1 : 0;
-}
-
-function nativeLineKind(element: HTMLElement): NativeContentLineKind {
-  const tagName = element.tagName.toLowerCase();
-  if (element.closest('aside.quote, blockquote')) return 'quote';
-  if (/^h[1-6]$/.test(tagName)) return 'heading';
-  if (tagName === 'pre' || tagName === 'code') return 'code';
-  if (tagName === 'figure' || element.matches('img, video, audio')) return 'media';
-  const text = normalizeLineText(element.textContent);
-  if (!text && element.querySelector(`img:not(${INLINE_IMAGE_SELECTOR}), video, audio`)) {
-    return 'media';
-  }
-  if (!text && !element.querySelector('img, video, audio')) return 'blank';
-  return 'text';
-}
-
-function nativeLineText(element: HTMLElement): string {
-  if (element.matches('figure, img, video, audio')) {
-    const media = element.matches('img, video, audio')
-      ? element
-      : element.querySelector<HTMLElement>('img, video, audio');
-    if (media instanceof HTMLImageElement) {
-      return `image: ${getImageLabel(media)}`;
-    }
-    const mediaLabel = normalizeLineText(media?.getAttribute('aria-label'));
-    if (mediaLabel) return mediaLabel;
-  }
-  const text = normalizeLineText(element.textContent);
-  if (element.matches('li')) return text ? `· ${text}` : '·';
-  if (element.matches('summary')) return text ? `▾ ${text}` : '▾';
-  return text || ' ';
-}
-
-function nativeElementLineTexts(element: HTMLElement): readonly string[] {
-  const tagName = element.tagName.toLowerCase();
-  const containsBreak = element.querySelector('br') !== null;
-  const preformattedText = tagName === 'pre' ? element.textContent : null;
-  if (!containsBreak && !preformattedText?.includes('\n')) return [nativeLineText(element)];
-
-  const text = containsBreak ? readTextWithBreaks(element) : (preformattedText ?? '');
-  return text
-    .replace(/\r\n?/gu, '\n')
-    .split('\n')
-    .map((line) => {
-      const normalized = normalizeLineText(line);
-      if (element.matches('li')) return normalized ? `· ${normalized}` : '·';
-      if (element.matches('summary')) return normalized ? `▾ ${normalized}` : '▾';
-      return normalized || ' ';
+function decorateOneboxes(root: HTMLElement): () => void {
+  const cleanups: (() => void)[] = [];
+  root.querySelectorAll<HTMLElement>(ONEBOX_SELECTOR).forEach((onebox) => {
+    const href = readOneboxHref(onebox);
+    if (!href) return;
+    const documentRef = onebox.ownerDocument;
+    const link = documentRef.createElement('a');
+    link.className = 'docode-topic-code__onebox-link';
+    link.href = href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.title = href;
+    const icon = documentRef.createElement('span');
+    icon.className = `codicon codicon-${isGitHubHref(href) ? 'github' : 'link-external'} docode-codicon`;
+    icon.setAttribute('aria-hidden', 'true');
+    const label = documentRef.createElement('span');
+    label.className = 'docode-topic-code__onebox-label';
+    label.textContent = readOneboxLabel(onebox);
+    link.append(icon, label);
+    onebox.setAttribute(ONEBOX_ATTRIBUTE, 'true');
+    onebox.prepend(link);
+    cleanups.push(() => {
+      link.remove();
+      onebox.removeAttribute(ONEBOX_ATTRIBUTE);
     });
-}
-
-function readTextWithBreaks(element: HTMLElement): string {
-  let text = '';
-  const append = (node: Node): void => {
-    if (node instanceof Text) {
-      text += node.data;
-      return;
-    }
-    if (node instanceof HTMLBRElement) {
-      text += '\n';
-      return;
-    }
-    node.childNodes.forEach(append);
+  });
+  return () => {
+    cleanups.reverse().forEach((cleanup) => {
+      cleanup();
+    });
   };
-  element.childNodes.forEach(append);
-  return text;
-}
-
-function normalizeLineText(value: string | null | undefined): string {
-  return value?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
 function decorateImages(root: HTMLElement, workbenchRoot: HTMLElement): () => void {
   const cleanups: (() => void)[] = [];
   const images = Array.from(root.querySelectorAll<HTMLImageElement>('img')).filter(
-    (image) => !image.matches(INLINE_IMAGE_SELECTOR),
+    (image) => !image.matches(INLINE_IMAGE_SELECTOR) && image.closest(ONEBOX_SELECTOR) === null,
   );
   images.forEach((source) => {
     const ownerLink = source.closest<HTMLAnchorElement>('a[href]');
@@ -354,7 +271,7 @@ function decorateImages(root: HTMLElement, workbenchRoot: HTMLElement): () => vo
     const previousLinkClass = ownerLink?.getAttribute('class') ?? null;
     const previousLinkLabel = ownerLink?.getAttribute('data-docode-image-label') ?? null;
     const trigger = source.ownerDocument.createElement('span');
-    const label = getImageLabel(source);
+    const label = getNativeImageLabel(source);
     trigger.setAttribute(IMAGE_TRIGGER_ATTRIBUTE, '');
     trigger.className = 'docode-topic-code__image-trigger';
     trigger.textContent = `image: ${label}`;
@@ -362,6 +279,10 @@ function decorateImages(root: HTMLElement, workbenchRoot: HTMLElement): () => vo
     if (sourceLine) {
       trigger.setAttribute(LINE_ATTRIBUTE, sourceLine);
       source.removeAttribute(LINE_ATTRIBUTE);
+      const sourceRole = source.getAttribute(CONTENT_ROLE_ATTRIBUTE);
+      const sourceAssetKind = source.getAttribute(ASSET_KIND_ATTRIBUTE);
+      if (sourceRole) trigger.setAttribute(CONTENT_ROLE_ATTRIBUTE, sourceRole);
+      if (sourceAssetKind) trigger.setAttribute(ASSET_KIND_ATTRIBUTE, sourceAssetKind);
     }
     source.before(trigger);
     source.setAttribute(IMAGE_ATTRIBUTE, '');
@@ -387,7 +308,7 @@ function decorateImages(root: HTMLElement, workbenchRoot: HTMLElement): () => vo
       source.ownerDocument,
       'docode-topic-code__image-preview-action',
       `Open full-screen image: ${label}`,
-      'screen-full',
+      'zoom-in',
     );
     fullscreenButton.setAttribute(PREVIEW_FULLSCREEN_BUTTON_ATTRIBUTE, '');
     preview.append(previewImage);
@@ -1024,15 +945,218 @@ function resolveImageUrl(value: string | null | undefined, document: Document): 
   }
 }
 
-function getImageLabel(image: HTMLImageElement): string {
-  const alt = image.alt.trim();
-  if (alt) return alt;
-  const title = image.title.trim();
-  if (title) return title;
-  try {
-    const pathname = new URL(image.currentSrc || image.src, image.ownerDocument.baseURI).pathname;
-    return pathname.split('/').filter(Boolean).at(-1) ?? 'preview';
-  } catch {
-    return 'preview';
+interface AppliedReplyCodeStructure {
+  readonly lineElements: HTMLElement[];
+  readonly restore: () => void;
+}
+
+const SOFT_WRAP_KINDS = new Set(['blank', 'heading', 'quote', 'text']);
+
+function applyReplyCodeStructure(
+  content: NativePostContent,
+  { expanded, onToggleFold, plan }: ReplyCodeStructureOptions,
+): AppliedReplyCodeStructure {
+  const root = content.root;
+  const documentRef = root.ownerDocument;
+  const region = resolveReplyCodeRegion(plan, expanded);
+  const cleanups: (() => void)[] = [];
+  const injected: HTMLElement[] = [];
+  const childSnapshot = Array.from(root.childNodes);
+
+  const setAttribute = (element: HTMLElement, name: string, value: string) => {
+    const previousValue = element.getAttribute(name);
+    element.setAttribute(name, value);
+    cleanups.push(() => {
+      if (previousValue === null) element.removeAttribute(name);
+      else element.setAttribute(name, previousValue);
+    });
+  };
+  const codeSpan = (className: string, text: string): HTMLSpanElement => {
+    const span = documentRef.createElement('span');
+    span.className = className;
+    span.textContent = text;
+    return span;
+  };
+  const scaffoldLine = (className: string, parts: readonly HTMLElement[]): HTMLDivElement => {
+    const line = documentRef.createElement('div');
+    line.className = `docode-topic-code__scaffold-line ${className}`.trim();
+    line.setAttribute(NATIVE_SCAFFOLD_ATTRIBUTE, 'true');
+    line.setAttribute('aria-hidden', 'true');
+    line.append(...parts);
+    injected.push(line);
+    return line;
+  };
+
+  region.hiddenTextElements.forEach((element) => {
+    setAttribute(element, CONTENT_HIDDEN_ATTRIBUTE, 'true');
+  });
+  region.visibleTextLines.forEach(({ element }) => {
+    const role =
+      plan.style === 'single' ? 'single' : plan.style === 'comment' ? 'comment-line' : 'block-line';
+    setAttribute(element, CONTENT_ROLE_ATTRIBUTE, role);
+    if (SOFT_WRAP_KINDS.has(readNativeContentLineKind(element))) {
+      setAttribute(element, SOFT_WRAP_ATTRIBUTE, 'true');
+    }
+  });
+  plan.assets.forEach(({ element, kind }) => {
+    setAttribute(element, CONTENT_ROLE_ATTRIBUTE, 'asset');
+    setAttribute(element, ASSET_KIND_ATTRIBUTE, kind);
+  });
+
+  const scaffoldNew = scaffoldLine('docode-topic-code__scaffold-new', [
+    codeSpan('docode-topic-code__keyword', 'Replies'),
+    codeSpan('docode-topic-code__code-plain', ' reply = '),
+    codeSpan('docode-topic-code__keyword', 'new'),
+    codeSpan('docode-topic-code__code-plain', ' '),
+    codeSpan('docode-topic-code__keyword', 'Replies'),
+    codeSpan('docode-topic-code__code-plain', '();'),
+  ]);
+  const contentCallLine = region.contentCallLine
+    ? scaffoldLine('docode-topic-code__scaffold-content-call', [
+        codeSpan('docode-topic-code__code-plain', 'reply.content('),
+        codeSpan('docode-topic-code__code-variable', 'content'),
+        codeSpan('docode-topic-code__code-plain', ');'),
+      ])
+    : null;
+  const commentOpenLine =
+    plan.style === 'comment'
+      ? scaffoldLine('docode-topic-code__comment-wrap', [
+          codeSpan('docode-topic-code__comment-marker', '/**'),
+        ])
+      : null;
+  const commentCloseLine =
+    plan.style === 'comment'
+      ? scaffoldLine('docode-topic-code__comment-wrap', [
+          codeSpan('docode-topic-code__comment-marker', '*/'),
+        ])
+      : null;
+
+  const declParts = () => [
+    codeSpan('docode-topic-code__keyword', 'String'),
+    codeSpan('docode-topic-code__code-plain', ' content = '),
+    codeSpan('docode-topic-code__code-string', '"""'),
+  ];
+  const declCloseParts = () => [
+    codeSpan('docode-topic-code__code-string', '"""'),
+    codeSpan('docode-topic-code__code-plain', ';'),
+  ];
+  let declOpenLine: HTMLDivElement | null = null;
+  let declCloseLine: HTMLDivElement | null = null;
+  if (plan.style === 'text-block' && region.visibleTextLines.length > 0) {
+    const firstElement = region.visibleTextLines[0]?.element;
+    const lastElement = region.visibleTextLines.at(-1)?.element;
+    if (region.declOpenInline && firstElement) {
+      const marker = documentRef.createElement('span');
+      marker.className = 'docode-topic-code__content-decl docode-topic-code__content-decl--open';
+      marker.append(...declParts());
+      firstElement.prepend(marker);
+      injected.push(marker);
+      cleanups.push(() => {
+        marker.remove();
+      });
+    } else {
+      declOpenLine = scaffoldLine('docode-topic-code__scaffold-decl', declParts());
+    }
+    if (region.declCloseInline && lastElement) {
+      const marker = documentRef.createElement('span');
+      marker.className = 'docode-topic-code__content-decl docode-topic-code__content-decl--close';
+      marker.append(...declCloseParts());
+      lastElement.append(marker);
+      injected.push(marker);
+      cleanups.push(() => {
+        marker.remove();
+      });
+    } else {
+      declCloseLine = scaffoldLine('docode-topic-code__scaffold-decl', declCloseParts());
+    }
   }
+
+  if (plan.foldable) {
+    const anchor = declCloseLine ?? commentCloseLine ?? region.visibleTextLines.at(-1)?.element;
+    if (anchor) {
+      const badge = documentRef.createElement('button');
+      badge.type = 'button';
+      badge.className = 'docode-topic-code__content-fold';
+      badge.setAttribute(FOLD_TOGGLE_ATTRIBUTE, expanded ? 'expanded' : 'folded');
+      badge.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      const hiddenCount =
+        plan.textLineCount -
+        region.visibleTextLines.reduce((count, { lineCount }) => count + lineCount, 0);
+      badge.setAttribute(
+        'aria-label',
+        expanded ? 'Fold reply content' : `Expand ${String(hiddenCount)} hidden lines`,
+      );
+      if (expanded) {
+        const icon = documentRef.createElement('span');
+        icon.className = 'codicon codicon-chevron-up docode-codicon';
+        icon.setAttribute('aria-hidden', 'true');
+        badge.append(icon);
+      } else {
+        badge.textContent = '⋯';
+      }
+      const handleToggle = (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onToggleFold?.();
+      };
+      badge.addEventListener('click', handleToggle);
+      if (anchor === declCloseLine || anchor === commentCloseLine) {
+        anchor.prepend(badge);
+      } else {
+        const closeMarker = anchor.querySelector(
+          ':scope > .docode-topic-code__content-decl--close',
+        );
+        if (closeMarker) closeMarker.before(badge);
+        else anchor.append(badge);
+      }
+      injected.push(badge);
+      cleanups.push(() => {
+        badge.removeEventListener('click', handleToggle);
+        badge.remove();
+      });
+    }
+  }
+
+  const assetElements = plan.assets.map(({ element }) => element);
+  const orderedTopLevel: HTMLElement[] = [];
+  const lineElements: HTMLElement[] = [];
+  const visibleTextElements = region.visibleTextLines.map(({ element }) => element);
+  if (plan.style === 'single') {
+    orderedTopLevel.push(scaffoldNew, ...assetElements, ...plan.textBlocks);
+    lineElements.push(scaffoldNew, ...assetElements, ...visibleTextElements);
+  } else {
+    if (commentOpenLine) orderedTopLevel.push(commentOpenLine);
+    if (declOpenLine) orderedTopLevel.push(declOpenLine);
+    orderedTopLevel.push(...plan.textBlocks);
+    if (declCloseLine) orderedTopLevel.push(declCloseLine);
+    if (commentCloseLine) orderedTopLevel.push(commentCloseLine);
+    orderedTopLevel.push(scaffoldNew, ...assetElements);
+    if (contentCallLine) orderedTopLevel.push(contentCallLine);
+
+    if (commentOpenLine) lineElements.push(commentOpenLine);
+    if (declOpenLine) lineElements.push(declOpenLine);
+    lineElements.push(...visibleTextElements);
+    if (declCloseLine) lineElements.push(declCloseLine);
+    if (commentCloseLine) lineElements.push(commentCloseLine);
+    lineElements.push(scaffoldNew, ...assetElements);
+    if (contentCallLine) lineElements.push(contentCallLine);
+  }
+  orderedTopLevel.forEach((element) => {
+    root.append(element);
+  });
+
+  return {
+    lineElements,
+    restore: () => {
+      cleanups.reverse().forEach((cleanup) => {
+        cleanup();
+      });
+      injected.forEach((element) => {
+        element.remove();
+      });
+      childSnapshot.forEach((node) => {
+        root.append(node);
+      });
+    },
+  };
 }

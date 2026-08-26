@@ -50,7 +50,7 @@ const POST_MENU_GROUPS: readonly (readonly TopicPostCommandId[])[] = [
   ['copy-link'],
 ];
 const POST_MENU_WIDTH = 220;
-const POST_MENU_HEIGHT = 132;
+const POST_MENU_HEIGHT = 168;
 const POST_MENU_MARGIN = 4;
 
 export function PostActionStrip({
@@ -60,6 +60,7 @@ export function PostActionStrip({
   onOpenMenu,
   onResolvePostCommand,
   onRunPostCommand,
+  onShareCard,
   reply,
 }: {
   readonly compact?: boolean;
@@ -68,6 +69,7 @@ export function PostActionStrip({
   readonly onOpenMenu: (left: number, top: number, returnFocus: HTMLElement) => void;
   readonly onResolvePostCommand?: ResolveTopicPostCommand | undefined;
   readonly onRunPostCommand?: RunTopicPostCommand | undefined;
+  readonly onShareCard?: (() => void) | undefined;
   readonly reply: TopicReplyDocumentBlock;
 }) {
   const controller = useRef<AbortController | null>(null);
@@ -249,6 +251,28 @@ export function PostActionStrip({
               })}
             </div>
           ))}
+          {onShareCard ? (
+            <div className="docode-workbench__tab-menu-group" role="group">
+              <div className="docode-workbench__tab-menu-separator" role="separator" />
+              <button
+                className="docode-workbench__tab-menu-item"
+                data-post-command="share-card"
+                disabled={feedback?.kind === 'pending'}
+                onClick={() => {
+                  onDismissMenu(false);
+                  onShareCard();
+                }}
+                onPointerMove={(event) => {
+                  event.currentTarget.focus();
+                }}
+                role="menuitem"
+                tabIndex={-1}
+                type="button"
+              >
+                Share as Image
+              </button>
+            </div>
+          ) : null}
           {feedback?.kind === 'failed' ? (
             <div className="docode-workbench__tab-menu-error" role="alert">
               {feedback.message}

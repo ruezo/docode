@@ -27,10 +27,16 @@ interface TopicListEditorSurfaceProps {
   readonly hasMoreTopics?: boolean;
   readonly loadingMoreTopics?: boolean;
   readonly onNavigateTopic?: (line: TopicListDocumentLine) => void;
+  readonly keyboardRequest?: TopicListKeyboardRequest | null;
   readonly onRequestMoreTopics?: () => void;
   readonly onViewportChange?: (scrollTop: number) => void;
   readonly platform?: WorkbenchPlatform;
   readonly scrollRequest?: TopicListScrollRequest | null;
+}
+
+export interface TopicListKeyboardRequest {
+  readonly kind: 'first' | 'last' | 'next' | 'previous';
+  readonly sequence: number;
 }
 
 export interface TopicListScrollRequest {
@@ -38,9 +44,19 @@ export interface TopicListScrollRequest {
   readonly sequence: number;
 }
 
+const NAVIGATION_KEY_BY_KEYBOARD_REQUEST: Readonly<
+  Record<TopicListKeyboardRequest['kind'], TopicListNavigationKey>
+> = {
+  first: 'Home',
+  last: 'End',
+  next: 'ArrowDown',
+  previous: 'ArrowUp',
+};
+
 export function TopicListEditorSurface({
   document,
   hasMoreTopics = false,
+  keyboardRequest = null,
   loadingMoreTopics = false,
   onNavigateTopic,
   onRequestMoreTopics,
@@ -91,6 +107,29 @@ export function TopicListEditorSurface({
       gutterContent.current.style.transform = `translate3d(0, -${String(scroll.scrollTop)}px, 0)`;
     }
   }, [scrollRequest]);
+
+  const appliedKeyboardSequence = useRef<number | null>(null);
+  useEffect(() => {
+    if (!keyboardRequest || appliedKeyboardSequence.current === keyboardRequest.sequence) return;
+    appliedKeyboardSequence.current = keyboardRequest.sequence;
+    const currentIndex = document.lines.findIndex(({ topicId }) => topicId === activeTopicId);
+    const targetIndex = getTargetIndex(
+      Math.max(currentIndex, 0),
+      NAVIGATION_KEY_BY_KEYBOARD_REQUEST[keyboardRequest.kind],
+      document.lines.length,
+    );
+    const target = document.lines[targetIndex];
+    if (!target) return;
+    const anchor = scrollContainer.current?.querySelector<HTMLAnchorElement>(
+      `[data-docode-topic-link="${String(target.topicId)}"]`,
+    );
+    if (!anchor) return;
+    anchor.focus({ preventScroll: true });
+    const scrollIntoView: unknown = Reflect.get(anchor, 'scrollIntoView');
+    if (typeof scrollIntoView === 'function') {
+      Reflect.apply(scrollIntoView, anchor, [{ block: 'nearest', inline: 'nearest' }]);
+    }
+  }, [activeTopicId, document.lines, keyboardRequest]);
 
   const synchronizeGutter = (event: UIEvent<HTMLDivElement>) => {
     if (gutterContent.current) {

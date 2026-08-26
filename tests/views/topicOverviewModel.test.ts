@@ -92,8 +92,8 @@ describe('createTopicOverviewModels', () => {
       requestedPostNumber: 2,
       scope: 'loaded-window',
     });
-    expect(models.minimap.lineCount).toBe(19);
-    expect(models.minimap.points.map(({ position }) => position)).toEqual([5 / 18, 13 / 18]);
+    expect(models.minimap.lineCount).toBe(24);
+    expect(models.minimap.points.map(({ position }) => position)).toEqual([5 / 23, 17 / 23]);
     expect(models.minimap.lines[0]?.tokens.map(({ text }) => text).join('')).toBe(
       'import LinuxDo.Topic;',
     );
@@ -120,10 +120,12 @@ describe('createTopicOverviewModels', () => {
     expect(models.minimap.lines.some(({ id }) => id.endsWith(':actions'))).toBe(false);
     expect(
       models.minimap.lines.some((line) =>
-        line.tokens.some(({ text, tone }) => text === 'Reliable heading' && tone === 'heading'),
+        line.tokens.some(
+          ({ text, tone }) => text.includes('Reliable heading') && tone === 'heading',
+        ),
       ),
     ).toBe(true);
-    expect(models.minimap.lines.at(-1)).toMatchObject({ lineNumber: 19, position: 1 });
+    expect(models.minimap.lines.at(-1)).toMatchObject({ lineNumber: 24, position: 1 });
     expect(
       models.minimap.lines
         .at(-1)
@@ -237,13 +239,13 @@ describe('createTopicOverviewModels', () => {
     expect(models.outline.entries).toHaveLength(1_000);
     expect(models.outline.entries.every(({ headings }) => headings.length === 0)).toBe(true);
     expect(models.minimap.points).toHaveLength(1_000);
-    expect(models.minimap.lineCount).toBe(5_006);
+    expect(models.minimap.lineCount).toBe(6_006);
     expect(models.minimap.lines.length).toBeLessThanOrEqual(800);
     expect(models.minimap.lines[0]?.lineNumber).toBe(1);
-    expect(models.minimap.lines.at(-1)?.lineNumber).toBe(5_006);
-    expect(models.minimap.points[0]?.position).toBeCloseTo(5 / 5_005);
-    expect(models.minimap.points[500]?.position).toBeCloseTo(2_505 / 5_005);
-    expect(models.minimap.points.at(-1)?.position).toBeCloseTo(5_000 / 5_005);
+    expect(models.minimap.lines.at(-1)?.lineNumber).toBe(6_006);
+    expect(models.minimap.points[0]?.position).toBeCloseTo(5 / 6_005);
+    expect(models.minimap.points[500]?.position).toBeCloseTo(3_005 / 6_005);
+    expect(models.minimap.points.at(-1)?.position).toBeCloseTo(5_999 / 6_005);
     expect(models.minimap.range).toMatchObject({
       after: 'loading',
       before: 'not-loaded',
@@ -303,20 +305,20 @@ describe('createTopicOverviewModels', () => {
       source: 'focus',
     });
 
-    expect(initialModels.minimap.lineCount).toBe(16);
-    expect(initialModels.minimap.points.map(({ position }) => position)).toEqual([5 / 15, 10 / 15]);
-    expect(expandedModels.minimap.lineCount).toBe(21);
+    expect(initialModels.minimap.lineCount).toBe(18);
+    expect(initialModels.minimap.points.map(({ position }) => position)).toEqual([5 / 17, 11 / 17]);
+    expect(expandedModels.minimap.lineCount).toBe(24);
     expect(expandedModels.minimap.points.map(({ position }) => position)).toEqual([
-      5 / 20,
-      10 / 20,
-      15 / 20,
+      5 / 23,
+      11 / 23,
+      17 / 23,
     ]);
     expect(expandedModels.outline.entries[1]?.markers).toContain('current');
     expect(changedModels.outline.topic?.id).toBe(43);
     expect(changedModels.outline.entries.map(({ id }) => id)).toEqual(['post:300']);
     expect(changedModels.outline.currentPosition).toBeNull();
     expect(changedModels.minimap.points[0]?.markers).toEqual(['original-post']);
-    expect(changedModels.minimap.points[0]?.position).toBe(5 / 10);
+    expect(changedModels.minimap.points[0]?.position).toBe(5 / 11);
   });
 
   it('repositions current reply markers without rebuilding static outline or minimap content', () => {
@@ -393,11 +395,13 @@ interface ReplyOptions {
 function reply(id: number, number: number, options: ReplyOptions = {}): TopicReplyDocumentBlock {
   return {
     author: options.author ?? null,
+    boosts: [],
     capabilities: replyCapabilities(),
     completeness: options.completeness ?? 'complete',
     content: options.content ?? null,
     floor: { loadedOrder: 0, number, requested: options.requested ?? false },
     id,
+    reactionCount: 0,
     permalink: postUrl(42, number),
     publishedAt: null,
     publishedLabel: null,

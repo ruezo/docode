@@ -152,6 +152,14 @@
   content: '\eb14';
 }
 
+.docode-theme-dark-modern .codicon-github::before {
+  content: '\ea84';
+}
+
+.docode-theme-dark-modern .codicon-verified::before {
+  content: '\eb77';
+}
+
 .docode-theme-dark-modern .codicon-layout::before {
   content: '\ebeb';
 }

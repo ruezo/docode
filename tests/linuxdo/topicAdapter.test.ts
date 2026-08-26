@@ -17,6 +17,34 @@ afterEach(() => {
 });
 
 describe('extractTopic', () => {
+  it('extracts reaction counts and boost bubbles from the native plugin markup', () => {
+    setDocumentUrl('/t/synthetic-topic/42');
+    document.body.innerHTML = topicFixture(
+      `${postFixture({ boosts: true, id: 100, number: 1, reactions: 333 })}${postFixture({
+        id: 106,
+        number: 2,
+      })}`,
+    );
+
+    const result = extractTopic(document, recognizeLinuxDoRoute(window.location.href));
+    if (result.state !== 'ready') throw new Error('Expected a ready topic extraction.');
+
+    expect(result.posts[0]).toMatchObject({ reactionCount: 333 });
+    expect(result.posts[0]?.boosts).toEqual([
+      {
+        avatarUrl: 'https://cdn.ldstatic.com/user_avatar/linux.do/luokakale/24/1.png',
+        text: '前排',
+        username: 'luokakale',
+      },
+      {
+        avatarUrl: 'https://linux.do/user_avatar/linux.do/sunking/24/2.png',
+        text: '前排合影',
+        username: 'sunking',
+      },
+    ]);
+    expect(result.posts[1]).toMatchObject({ boosts: [], reactionCount: 0 });
+  });
+
   it('extracts topic metadata and ordered posts while preserving native rich content', () => {
     setDocumentUrl('/t/synthetic-topic/42/7');
     document.body.innerHTML = topicFixture(
@@ -460,9 +488,11 @@ function topicFixture(posts: string, options: { readonly loading?: boolean } = {
 }
 
 function postFixture(options: {
+  readonly boosts?: boolean;
   readonly id: number;
   readonly number: number;
   readonly permalink?: string;
+  readonly reactions?: number;
   readonly replyTab?: boolean;
   readonly replyToPostNumber?: number;
   readonly unread?: boolean;
@@ -485,6 +515,20 @@ function postFixture(options: {
       <div class="topic-meta-data"><div class="post-infos">
         ${options.unread ? '<div class="read-state" title="帖子未读"></div>' : ''}
       </div></div>
+      ${
+        options.reactions
+          ? `<button class="discourse-reactions-counter" aria-label="${String(options.reactions)} reactions"><span class="reactions-counter">${String(options.reactions)}</span></button>`
+          : ''
+      }
+      ${
+        options.boosts
+          ? `<div class="discourse-boosts"><div class="discourse-boosts__list">
+              <span class="discourse-boosts__bubble"><a data-user-card="luokakale"><img class="avatar" src="https://cdn.ldstatic.com/user_avatar/linux.do/luokakale/24/1.png" alt=""></a><span class="discourse-boosts__cooked"><p>前排</p></span></span>
+              <span class="discourse-boosts__bubble"><a data-user-card="sunking"><img class="avatar" src="/user_avatar/linux.do/sunking/24/2.png" alt=""></a><span class="discourse-boosts__cooked"><p>前排合影</p></span></span>
+              <span class="discourse-boosts__bubble"><span class="discourse-boosts__cooked"><p>   </p></span></span>
+            </div></div>`
+          : ''
+      }
       <div class="cooked">
         <h3>Section</h3>
         <p>Rich <a href="https://example.com/reference">reference</a></p>

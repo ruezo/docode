@@ -96,6 +96,67 @@ describe('nativeContentPresentation', () => {
     ]);
   });
 
+  it('presents a Discourse onebox card as one reversible VS Code-style link line', () => {
+    document.body.innerHTML = `<main id="source"><div class="cooked"></div></main>
+      <div data-docode-workbench-root><div class="docode-topic-code__content-slot"></div></div>`;
+    const root = requireElement('.cooked');
+    root.innerHTML = `<aside class="onebox githubrepo" data-onebox-src="https://github.com/ruezo/docode">
+      <header class="source"><a href="https://github.com/ruezo/docode">github.com</a></header>
+      <article class="onebox-body"><h3><a href="https://github.com/ruezo/docode">GitHub - ruezo/docode</a></h3><p>Card description<br>with breaks</p></article>
+    </aside>
+    <aside class="onebox"><header class="source"><a href="https://example.com/page">example.com</a></header><article class="onebox-body"><p>No title card</p></article></aside>
+    <aside class="onebox"><header class="source"><a href="javascript:alert(1)">bad</a></header></aside>`;
+    const [githubOnebox, plainOnebox, unsafeOnebox] = Array.from(root.children) as HTMLElement[];
+    if (!githubOnebox || !plainOnebox || !unsafeOnebox) throw new Error('Missing onebox fixture.');
+    const workbenchRoot = requireElement('[data-docode-workbench-root]');
+    const content: NativePostContent = {
+      blocks: [
+        { element: githubOnebox, kind: 'paragraph' },
+        { element: plainOnebox, kind: 'paragraph' },
+        { element: unsafeOnebox, kind: 'paragraph' },
+      ],
+      root,
+      source: 'linuxdo-owned-dom',
+    };
+
+    expect(countNativeContentLines(content)).toBe(3);
+    expect(summarizeNativeContentLines(content)).toEqual([
+      { indent: 0, kind: 'link', text: 'GitHub - ruezo/docode' },
+      { indent: 0, kind: 'link', text: 'example.com' },
+      { indent: 0, kind: 'link', text: 'bad' },
+    ]);
+
+    const restore = presentNativeContent(content, 12, workbenchRoot);
+    const githubLink = githubOnebox.querySelector<HTMLAnchorElement>(
+      ':scope > .docode-topic-code__onebox-link',
+    );
+    expect(githubOnebox.getAttribute('data-docode-onebox')).toBe('true');
+    expect(githubOnebox.getAttribute('data-docode-editor-line-kind')).toBe('link');
+    expect(githubOnebox.getAttribute('data-docode-editor-line-count')).toBe('1');
+    expect(githubLink?.href).toBe('https://github.com/ruezo/docode');
+    expect(githubLink?.target).toBe('_blank');
+    expect(githubLink?.rel).toBe('noopener noreferrer');
+    expect(githubLink?.querySelector('.codicon-github')?.getAttribute('aria-hidden')).toBe('true');
+    expect(githubLink?.querySelector('.docode-topic-code__onebox-label')?.textContent).toBe(
+      'GitHub - ruezo/docode',
+    );
+    const plainLink = plainOnebox.querySelector<HTMLAnchorElement>(
+      ':scope > .docode-topic-code__onebox-link',
+    );
+    expect(plainLink?.href).toBe('https://example.com/page');
+    expect(plainLink?.querySelector('.codicon-link-external')).not.toBeNull();
+    expect(plainLink?.querySelector('.docode-topic-code__onebox-label')?.textContent).toBe(
+      'example.com',
+    );
+    expect(unsafeOnebox.hasAttribute('data-docode-onebox')).toBe(false);
+    expect(unsafeOnebox.querySelector('.docode-topic-code__onebox-link')).toBeNull();
+
+    restore();
+    expect(root.querySelectorAll('.docode-topic-code__onebox-link')).toHaveLength(0);
+    expect(githubOnebox.hasAttribute('data-docode-onebox')).toBe(false);
+    expect(githubOnebox.querySelector(':scope > header.source')).not.toBeNull();
+  });
+
   it('realigns one line-number layer after native content is restored and re-adopted', async () => {
     document.body.innerHTML = `<main id="source"><div class="cooked"><p>Content</p></div></main>
       <div data-docode-workbench-root><div class="docode-topic-code__content-slot"></div></div>`;

@@ -13,7 +13,8 @@ import {
 import { createPortal } from 'react-dom';
 
 import type { NativeContentTransfer } from '../../runtime/nativeContentTransfer';
-import type { TopicPostAuthor } from '../../linuxdo/topicAdapter';
+import type { TopicPostAuthor, TopicPostBoost } from '../../linuxdo/topicAdapter';
+import type { LinuxDoBoostApiOutcome } from '../../linuxdo/boostApiClient';
 import { loadLinuxDoUserCard, type LinuxDoUserCard } from '../../linuxdo/userCardAdapter';
 import { Codicon } from '../../ui/icons/codicon';
 import type { TopicReadingMode } from '../../ui/workbench/workbenchMode';
@@ -25,8 +26,15 @@ import {
   type TopicPostMenuRequest,
 } from './TopicPostAffordances';
 import type { TopicDetailDocument, TopicReplyDocumentBlock } from './topicDetailDocument';
-import { presentNativeContent, summarizeNativeContentLines } from './nativeContentPresentation';
+import {
+  presentNativeContent,
+  summarizeNativeContentLines,
+  type ReplyCodeStructureOptions,
+} from './nativeContentPresentation';
+import { createReplyCodePlan } from './replyCodePlan';
 import { createReplyMethodName } from './topicJavaSource';
+import { createShareCardModel, type ShareCardModel } from './shareCard';
+import { ShareCardDialog } from './ShareCardDialog';
 import {
   createDocReplyHeadingLabel,
   createFallbackDocReplyLineLayout,
@@ -51,6 +59,7 @@ import {
 
 export type ReadyTopicDetailDocument = TopicDetailDocument & { readonly state: 'ready' };
 export type { TopicReadingMode } from '../../ui/workbench/workbenchMode';
+
 interface ActiveReplySelection {
   readonly id: number | null;
   readonly topicId: number;
@@ -90,7 +99,17 @@ export interface TopicCursorPosition {
   readonly postId: number;
 }
 
+export type SendTopicBoost = (
+  postId: number,
+  raw: string,
+  signal: AbortSignal,
+) => Promise<LinuxDoBoostApiOutcome>;
+
+const EMPTY_LOCAL_BOOSTS: readonly TopicPostBoost[] = [];
+
 interface TopicCodeEditorSurfaceProps {
+  readonly currentUserAvatarUrl?: string | null;
+  readonly currentUsername?: string | null;
   readonly document: ReadyTopicDetailDocument;
   readonly earlierPaginationStatus?: 'complete' | 'error' | 'idle' | 'loading';
   readonly focusRequest?: TopicReplyFocusRequest | null;
@@ -107,6 +126,7 @@ interface TopicCodeEditorSurfaceProps {
   readonly onRequestMorePosts?: () => void;
   readonly onResolvePostCommand?: ResolveTopicPostCommand | undefined;
   readonly onRunPostCommand?: RunTopicPostCommand | undefined;
+  readonly onSendBoost?: SendTopicBoost | undefined;
   readonly onViewportChange?: (viewport: TopicViewportState) => void;
   readonly revision: number;
   readonly scrollRequest?: TopicScrollRequest | null;
@@ -114,6 +134,8 @@ interface TopicCodeEditorSurfaceProps {
 }
 
 export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
+  currentUserAvatarUrl = null,
+  currentUsername = null,
   document,
   earlierPaginationStatus = 'idle',
   focusRequest = null,
@@ -130,12 +152,17 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
   onRequestMorePosts,
   onResolvePostCommand,
   onRunPostCommand,
+  onSendBoost,
   onViewportChange,
   revision,
   scrollRequest = null,
   showAuthorAvatars = true,
 }: TopicCodeEditorSurfaceProps) {
   const resolvedHasMorePosts = hasMorePosts ?? document.loadedWindow.hasMorePosts;
+  const [shareCard, setShareCard] = useState<{
+    readonly model: ShareCardModel;
+    readonly postNumber: number;
+  } | null>(null);
   const [collapsedReplies, setCollapsedReplies] = useState<CollapsedReplySelection>(() => ({
     ids: new Set(),
     topicId: document.topic.id,
@@ -165,6 +192,22 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
   const viewportReplyAnchor = useRef<ViewportReplyAnchor | null>(null);
   const positionedRouteHref = useRef<string | null>(null);
   const preferredActiveReplyId = preferredReplyId(document);
+  const openShareCard = useCallback(
+    (reply: TopicReplyDocumentBlock, layout: TopicReplyLineLayout) => {
+      setShareCard({
+        model: createShareCardModel({
+          annotated: layout.annotation !== null,
+          reply,
+          startLine: layout.annotation ?? layout.signature,
+        }),
+        postNumber: reply.floor.number,
+      });
+    },
+    [],
+  );
+  const closeShareCard = useCallback(() => {
+    setShareCard(null);
+  }, []);
   const requestedReplyId = document.replies.find(({ floor }) => floor.requested)?.id ?? null;
   const activeReplyStillLoaded = document.replies.some(({ id }) => id === activeReply.id);
   const paginationTransitionActive =
@@ -175,7 +218,79 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
     activeReplyStillLoaded
       ? activeReply.id
       : preferredActiveReplyId;
-  const lineLayout = useMemo(() => createTopicLineLayout(document), [document]);
+  const [boostEditor, setBoostEditor] = useState<{
+    readonly postId: number;
+    readonly topicId: number;
+  } | null>(null);
+  const [sentBoosts, setSentBoosts] = useState<{
+    readonly byPost: ReadonlyMap<number, readonly TopicPostBoost[]>;
+    readonly topicId: number;
+  }>(() => ({ byPost: new Map(), topicId: document.topic.id }));
+  const activeBoostEditorPostId =
+    boostEditor?.topicId === document.topic.id ? boostEditor.postId : null;
+  const sentBoostsByPost = useMemo(
+    () =>
+      sentBoosts.topicId === document.topic.id
+        ? sentBoosts.byPost
+        : new Map<number, readonly TopicPostBoost[]>(),
+    [document.topic.id, sentBoosts],
+  );
+  const openBoostEditor = useCallback(
+    (postId: number) => {
+      setBoostEditor({ postId, topicId: document.topic.id });
+    },
+    [document.topic.id],
+  );
+  const closeBoostEditor = useCallback(() => {
+    setBoostEditor(null);
+  }, []);
+  const recordSentBoost = useCallback(
+    (postId: number, boost: TopicPostBoost) => {
+      setSentBoosts((current) => {
+        const base =
+          current.topicId === document.topic.id
+            ? current.byPost
+            : new Map<number, readonly TopicPostBoost[]>();
+        const next = new Map(base);
+        next.set(postId, [...(next.get(postId) ?? []), boost]);
+        return { byPost: next, topicId: document.topic.id };
+      });
+    },
+    [document.topic.id],
+  );
+  const forcedBoostPostIds = useMemo(() => {
+    const ids = new Set<number>(sentBoostsByPost.keys());
+    if (activeBoostEditorPostId !== null) ids.add(activeBoostEditorPostId);
+    return ids;
+  }, [activeBoostEditorPostId, sentBoostsByPost]);
+  const [expandedContentPosts, setExpandedContentPosts] = useState<CollapsedReplySelection>(() => ({
+    ids: new Set<number>(),
+    topicId: document.topic.id,
+  }));
+  const expandedContentPostIds = useMemo(
+    () =>
+      expandedContentPosts.topicId === document.topic.id
+        ? expandedContentPosts.ids
+        : new Set<number>(),
+    [document.topic.id, expandedContentPosts],
+  );
+  const toggleContentFold = useCallback(
+    (replyId: number) => {
+      setExpandedContentPosts((current) => {
+        const next = new Set(
+          current.topicId === document.topic.id ? current.ids : new Set<number>(),
+        );
+        if (next.has(replyId)) next.delete(replyId);
+        else next.add(replyId);
+        return { ids: next, topicId: document.topic.id };
+      });
+    },
+    [document.topic.id],
+  );
+  const lineLayout = useMemo(
+    () => createTopicLineLayout(document, { expandedContentPostIds, forcedBoostPostIds }),
+    [document, expandedContentPostIds, forcedBoostPostIds],
+  );
   const docLineLayout = useMemo(() => createTopicDocLineLayout(document), [document]);
   const repliesByFloor = useMemo(
     () => new Map(document.replies.map((reply) => [reply.floor.number, reply])),
@@ -703,7 +818,16 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
           <Fragment key={`${String(reply.id)}:${String(reply.floor.number)}`}>
             <TopicReply
               active={reply.id === resolvedActiveReplyId}
+              boostEditorOpen={reply.id === activeBoostEditorPostId}
               collapsed={collapsedReplyIds.has(reply.id)}
+              contentExpanded={expandedContentPostIds.has(reply.id)}
+              onToggleContentFold={toggleContentFold}
+              currentUserAvatarUrl={currentUserAvatarUrl}
+              currentUsername={currentUsername}
+              localBoosts={sentBoostsByPost.get(reply.id) ?? EMPTY_LOCAL_BOOSTS}
+              onBoostSent={recordSentBoost}
+              onCloseBoostEditor={closeBoostEditor}
+              onOpenBoostEditor={openBoostEditor}
               docLineLayout={
                 docLineLayout.replies.get(reply.id) ?? createFallbackDocReplyLineLayout(reply)
               }
@@ -715,6 +839,8 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
               onMoveFocus={focusReply}
               onResolvePostCommand={onResolvePostCommand}
               onRunPostCommand={onRunPostCommand}
+              onSendBoost={onSendBoost}
+              onOpenShareCard={openShareCard}
               onToggleCollapsed={toggleReplyCollapsed}
               registerElement={registerReplyElement}
               reply={reply}
@@ -756,6 +882,13 @@ export const TopicCodeEditorSurface = memo(function TopicCodeEditorSurface({
           <code>{'}'}</code>
         </div>
       ) : null}
+      {shareCard ? (
+        <ShareCardDialog
+          model={shareCard.model}
+          onClose={closeShareCard}
+          postNumber={shareCard.postNumber}
+        />
+      ) : null}
     </section>
   );
 });
@@ -778,7 +911,9 @@ function TopicHeader({
           <>
             <div aria-hidden="true" className="docode-topic-code__editor-line">
               <span className="docode-topic-code__declaration">import</span>
-              <span className="docode-topic-code__punctuation"> LinuxDo.</span>
+              <span className="docode-topic-code__punctuation docode-topic-code__import-path">
+                {' LinuxDo.'}
+              </span>
               <span className="docode-topic-code__keyword">Topic</span>
               <span className="docode-topic-code__punctuation">;</span>
             </div>
@@ -788,7 +923,9 @@ function TopicHeader({
               data-docode-editor-line={TOPIC_HEADER_LINES.mottoImportLine}
             >
               <span className="docode-topic-code__declaration">import</span>
-              <span className="docode-topic-code__punctuation"> Sincere.friendly.united.</span>
+              <span className="docode-topic-code__punctuation docode-topic-code__import-path">
+                {' Sincere.friendly.united.'}
+              </span>
               <span className="docode-topic-code__keyword">professional</span>
               <span className="docode-topic-code__punctuation">;</span>
             </div>
@@ -880,9 +1017,20 @@ interface TopicReplyProps {
     fallbackLine: number,
     pointerClientY?: number,
   ) => void;
+  readonly boostEditorOpen: boolean;
+  readonly currentUserAvatarUrl: string | null;
+  readonly currentUsername: string | null;
+  readonly localBoosts: readonly TopicPostBoost[];
+  readonly onBoostSent: (postId: number, boost: TopicPostBoost) => void;
+  readonly contentExpanded: boolean;
+  readonly onCloseBoostEditor: () => void;
+  readonly onOpenBoostEditor?: ((postId: number) => void) | undefined;
   readonly onMoveFocus: (replyId: number, position: 'end' | 'next' | 'previous' | 'start') => void;
+  readonly onToggleContentFold: (replyId: number) => void;
+  readonly onOpenShareCard: (reply: TopicReplyDocumentBlock, layout: TopicReplyLineLayout) => void;
   readonly onResolvePostCommand?: ResolveTopicPostCommand | undefined;
   readonly onRunPostCommand?: RunTopicPostCommand | undefined;
+  readonly onSendBoost?: SendTopicBoost | undefined;
   readonly onToggleCollapsed: (replyId: number) => void;
   readonly registerElement: (replyId: number, element: HTMLElement | null) => void;
   readonly reply: TopicReplyDocumentBlock;
@@ -893,17 +1041,28 @@ interface TopicReplyProps {
 
 const TopicReply = memo(function TopicReply({
   active,
+  boostEditorOpen,
   collapsed,
+  contentExpanded,
+  currentUserAvatarUrl,
+  currentUsername,
   docLineLayout,
+  localBoosts,
   mode,
   nativeContentTransfer,
   lineLayout,
+  onBoostSent,
+  onCloseBoostEditor,
   onFocus,
   onCursorLine,
   onMoveFocus,
+  onOpenBoostEditor,
+  onOpenShareCard,
   onResolvePostCommand,
   onRunPostCommand,
+  onSendBoost,
   onToggleCollapsed,
+  onToggleContentFold,
   registerElement,
   reply,
   replyTarget,
@@ -914,6 +1073,20 @@ const TopicReply = memo(function TopicReply({
   const contentId = `${headingId}-content`;
   const codeCollapsed = mode === 'code' && collapsed;
   const methodName = createReplyMethodName(reply);
+  const codePlan = useMemo(
+    () => createReplyCodePlan(reply.content, reply.id),
+    [reply.content, reply.id],
+  );
+  const handleToggleContentFold = useCallback(() => {
+    onToggleContentFold(reply.id);
+  }, [onToggleContentFold, reply.id]);
+  const codeStructure = useMemo<ReplyCodeStructureOptions | null>(
+    () =>
+      mode === 'code' && codePlan
+        ? { expanded: contentExpanded, onToggleFold: handleToggleContentFold, plan: codePlan }
+        : null,
+    [codePlan, contentExpanded, handleToggleContentFold, mode],
+  );
   const [menuRequest, setMenuRequest] = useState<TopicPostMenuRequest | null>(null);
   const openPostMenu = useCallback((left: number, top: number, returnFocus: HTMLElement) => {
     setMenuRequest((current) => ({
@@ -1141,6 +1314,22 @@ const TopicReply = memo(function TopicReply({
                   <time dateTime={reply.publishedAt ?? undefined}>{reply.publishedLabel}</time>
                 </>
               ) : null}
+              {reply.reactionCount > 0 ? (
+                <>
+                  <span aria-hidden="true" className="docode-topic-code__metadata-separator">
+                    ·
+                  </span>
+                  <span
+                    className="docode-topic-code__reaction-count"
+                    title={`${String(reply.reactionCount)} reactions`}
+                  >
+                    <span aria-hidden="true" className="docode-topic-code__reaction-heart">
+                      ♥
+                    </span>
+                    {reply.reactionCount}
+                  </span>
+                </>
+              ) : null}
               {reply.completeness === 'partial' ? (
                 <>
                   <span aria-hidden="true" className="docode-topic-code__metadata-separator">
@@ -1159,6 +1348,21 @@ const TopicReply = memo(function TopicReply({
                   </span>
                 </>
               ) : null}
+              {lineLayout.boosts === null &&
+              onSendBoost !== undefined &&
+              currentUsername !== null ? (
+                <button
+                  aria-label={`Boost post ${String(reply.floor.number)}`}
+                  className="docode-topic-code__metadata-boost"
+                  data-docode-tooltip="Send a quick Boost reply"
+                  onClick={() => {
+                    onOpenBoostEditor?.(reply.id);
+                  }}
+                  type="button"
+                >
+                  <Codicon name="rocket" />
+                </button>
+              ) : null}
             </div>
           ) : null}
           <div className="docode-topic-code__reply-actions">
@@ -1169,6 +1373,9 @@ const TopicReply = memo(function TopicReply({
               onOpenMenu={openPostMenu}
               onResolvePostCommand={onResolvePostCommand}
               onRunPostCommand={onRunPostCommand}
+              onShareCard={() => {
+                onOpenShareCard(reply, lineLayout);
+              }}
               reply={reply}
             />
           </div>
@@ -1177,6 +1384,7 @@ const TopicReply = memo(function TopicReply({
           {!codeCollapsed ? (
             reply.content ? (
               <NativeContentSlot
+                codeStructure={codeStructure}
                 content={reply.content}
                 firstLine={mode === 'code' ? lineLayout.contentStart : docLineLayout.contentStart}
                 nativeContentTransfer={nativeContentTransfer}
@@ -1195,6 +1403,23 @@ const TopicReply = memo(function TopicReply({
               </p>
             )
           ) : null}
+          {!codeCollapsed && mode === 'code' && lineLayout.boosts !== null ? (
+            <BoostBubbles
+              boosts={reply.boosts}
+              currentUserAvatarUrl={currentUserAvatarUrl}
+              currentUsername={currentUsername}
+              editing={boostEditorOpen}
+              lineNumber={lineLayout.boosts}
+              localBoosts={localBoosts}
+              onBoostSent={onBoostSent}
+              onCloseEditor={onCloseBoostEditor}
+              onOpenEditor={(postId) => onOpenBoostEditor?.(postId)}
+              onSendBoost={onSendBoost}
+              postAuthorUsername={reply.author?.username ?? null}
+              postId={reply.id}
+              postNumber={reply.floor.number}
+            />
+          ) : null}
           {!codeCollapsed &&
           (mode === 'code' ? lineLayout.replyTarget : docLineLayout.replyTarget) !== null &&
           reply.replyToPostNumber !== null ? (
@@ -1207,6 +1432,18 @@ const TopicReply = memo(function TopicReply({
               target={replyTarget}
               targetPostNumber={reply.replyToPostNumber}
             />
+          ) : null}
+          {!codeCollapsed && mode === 'code' && lineLayout.save !== null ? (
+            <div
+              aria-hidden="true"
+              className="docode-topic-code__editor-line docode-topic-code__save-line"
+              data-docode-editor-line={lineLayout.save}
+            >
+              <span className="docode-topic-code__code-method">save</span>
+              <span className="docode-topic-code__punctuation">(</span>
+              <span className="docode-topic-code__code-plain">reply</span>
+              <span className="docode-topic-code__punctuation">);</span>
+            </div>
           ) : null}
         </div>
         {mode === 'code' && !codeCollapsed ? (
@@ -1230,13 +1467,246 @@ const TopicReply = memo(function TopicReply({
   );
 }, areTopicReplyPropsEqual);
 
+function BoostBubbles({
+  boosts: nativeBoosts,
+  currentUserAvatarUrl,
+  currentUsername,
+  editing,
+  lineNumber,
+  localBoosts,
+  onBoostSent,
+  onCloseEditor,
+  onOpenEditor,
+  onSendBoost,
+  postAuthorUsername,
+  postId,
+  postNumber,
+}: {
+  readonly boosts: TopicReplyDocumentBlock['boosts'];
+  readonly currentUserAvatarUrl: string | null;
+  readonly currentUsername: string | null;
+  readonly editing: boolean;
+  readonly lineNumber: number;
+  readonly localBoosts: readonly TopicPostBoost[];
+  readonly onBoostSent: (postId: number, boost: TopicPostBoost) => void;
+  readonly onCloseEditor: () => void;
+  readonly onOpenEditor: (postId: number) => void;
+  readonly onSendBoost: SendTopicBoost | undefined;
+  readonly postAuthorUsername: string | null;
+  readonly postId: number;
+  readonly postNumber: number;
+}) {
+  const [draft, setDraft] = useState('');
+  const [pending, setPending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const sendController = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      sendController.current?.abort();
+    },
+    [],
+  );
+  const boosts = useMemo(
+    () => [
+      ...nativeBoosts,
+      ...localBoosts.filter(
+        (local) =>
+          !nativeBoosts.some(
+            (native) =>
+              native.username !== null &&
+              native.username.toLowerCase() === local.username?.toLowerCase(),
+          ),
+      ),
+    ],
+    [localBoosts, nativeBoosts],
+  );
+  const alreadyBoosted =
+    currentUsername !== null &&
+    boosts.some((boost) => boost.username?.toLowerCase() === currentUsername.toLowerCase());
+  const canBoost = onSendBoost !== undefined && currentUsername !== null && !alreadyBoosted;
+  const closeEditor = () => {
+    sendController.current?.abort();
+    setDraft('');
+    setPending(false);
+    setSendError(null);
+    onCloseEditor();
+  };
+  const submitBoost = () => {
+    if (!onSendBoost || pending) return;
+    const raw = draft.trim();
+    if (raw.length === 0) return;
+    const controller = new AbortController();
+    sendController.current = controller;
+    setPending(true);
+    setSendError(null);
+    void onSendBoost(postId, raw, controller.signal).then(
+      (outcome) => {
+        if (controller.signal.aborted) return;
+        setPending(false);
+        if (outcome.kind === 'created') {
+          onBoostSent(postId, {
+            avatarUrl: outcome.boost.avatarUrl ?? currentUserAvatarUrl,
+            text: outcome.boost.text,
+            username: outcome.boost.username ?? currentUsername,
+          });
+          setDraft('');
+          setSendError(null);
+          onCloseEditor();
+          return;
+        }
+        if (outcome.code === 'aborted') return;
+        setSendError(outcome.message);
+      },
+      () => {
+        if (controller.signal.aborted) return;
+        setPending(false);
+        setSendError('Linux DO rejected the Boost request.');
+      },
+    );
+  };
+  return (
+    <div
+      className="docode-topic-code__boosts-line"
+      data-docode-editor-line={lineNumber}
+      data-docode-soft-wrap="true"
+      data-post-boosts={postNumber}
+    >
+      <span aria-hidden="true" className="docode-topic-code__boosts-label">
+        {`// boosts(${String(boosts.length)}):`}
+      </span>
+      <span className="docode-sr-only">
+        {`${String(boosts.length)} quick replies to post ${String(postNumber)}`}
+      </span>
+      {boosts.map((boost, index) => (
+        <span
+          className="docode-topic-code__boost"
+          key={`${boost.username ?? 'anonymous'}:${String(index)}`}
+        >
+          {boost.avatarUrl ? (
+            <img alt="" decoding="async" loading="lazy" src={boost.avatarUrl} />
+          ) : null}
+          <span className="docode-topic-code__boost-text">{boost.text}</span>
+          <span aria-hidden="true" className="docode-topic-code__boost-preview">
+            {boost.avatarUrl ? (
+              <img alt="" decoding="async" loading="lazy" src={boost.avatarUrl} />
+            ) : null}
+            <span className="docode-topic-code__boost-preview-body">
+              {boost.username ? (
+                <span className="docode-topic-code__boost-preview-user">{`@${boost.username}`}</span>
+              ) : null}
+              <span className="docode-topic-code__boost-preview-text">{boost.text}</span>
+            </span>
+          </span>
+        </span>
+      ))}
+      {canBoost && !editing ? (
+        <button
+          aria-label={`Boost post ${String(postNumber)}`}
+          className="docode-topic-code__boost-add"
+          data-docode-tooltip="Send a quick Boost reply"
+          onClick={() => {
+            onOpenEditor(postId);
+          }}
+          type="button"
+        >
+          <Codicon name="rocket" />
+        </button>
+      ) : null}
+      {canBoost && editing ? (
+        <span className="docode-topic-code__boost-editor" data-pending={pending ? 'true' : 'false'}>
+          {currentUserAvatarUrl ? (
+            <img
+              alt=""
+              className="docode-topic-code__boost-editor-avatar"
+              decoding="async"
+              src={currentUserAvatarUrl}
+            />
+          ) : null}
+          <input
+            aria-label={`Boost text for post ${String(postNumber)}`}
+            autoFocus
+            className="docode-topic-code__boost-input"
+            disabled={pending}
+            maxLength={64}
+            onBlur={() => {
+              if (draft.trim().length === 0 && !pending) closeEditor();
+            }}
+            onChange={(event) => {
+              setDraft(event.currentTarget.value);
+              setSendError(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                submitBoost();
+                return;
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                closeEditor();
+              }
+            }}
+            placeholder={postAuthorUsername ? `Boost ${postAuthorUsername}…` : 'Boost…'}
+            spellCheck={false}
+            type="text"
+            value={draft}
+          />
+          {pending ? (
+            <span className="docode-topic-code__boost-editor-action" data-role="pending">
+              <Codicon name="loading" spin />
+            </span>
+          ) : (
+            <>
+              <button
+                aria-label={`Send boost for post ${String(postNumber)}`}
+                className="docode-topic-code__boost-editor-action"
+                data-role="send"
+                disabled={draft.trim().length === 0}
+                onClick={submitBoost}
+                type="button"
+              >
+                <Codicon name="check" />
+              </button>
+              <button
+                aria-label={`Cancel boost for post ${String(postNumber)}`}
+                className="docode-topic-code__boost-editor-action"
+                data-role="cancel"
+                onClick={closeEditor}
+                type="button"
+              >
+                <Codicon name="close" />
+              </button>
+            </>
+          )}
+        </span>
+      ) : null}
+      {sendError !== null && editing ? (
+        <span className="docode-topic-code__boost-error" role="alert">
+          {sendError}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function areTopicReplyPropsEqual(
   previous: Readonly<TopicReplyProps>,
   next: Readonly<TopicReplyProps>,
 ): boolean {
   return (
     previous.active === next.active &&
+    previous.boostEditorOpen === next.boostEditorOpen &&
     previous.collapsed === next.collapsed &&
+    previous.contentExpanded === next.contentExpanded &&
+    previous.onToggleContentFold === next.onToggleContentFold &&
+    previous.currentUserAvatarUrl === next.currentUserAvatarUrl &&
+    previous.currentUsername === next.currentUsername &&
+    previous.localBoosts === next.localBoosts &&
+    previous.onBoostSent === next.onBoostSent &&
+    previous.onCloseBoostEditor === next.onCloseBoostEditor &&
+    previous.onOpenBoostEditor === next.onOpenBoostEditor &&
+    previous.onOpenShareCard === next.onOpenShareCard &&
+    previous.onSendBoost === next.onSendBoost &&
     previous.docLineLayout === next.docLineLayout &&
     previous.mode === next.mode &&
     previous.lineLayout === next.lineLayout &&
@@ -1716,6 +2186,7 @@ function ReplyTargetReference({
 }
 
 interface NativeContentSlotProps {
+  readonly codeStructure: ReplyCodeStructureOptions | null;
   readonly content: NonNullable<TopicReplyDocumentBlock['content']>;
   readonly firstLine: number;
   readonly nativeContentTransfer: NativeContentTransfer;
@@ -1724,6 +2195,7 @@ interface NativeContentSlotProps {
 }
 
 function NativeContentSlot({
+  codeStructure,
   content,
   firstLine,
   nativeContentTransfer,
@@ -1749,8 +2221,8 @@ function NativeContentSlot({
     if (!host.current || root.parentNode !== host.current) return;
     const workbenchRoot = host.current.closest<HTMLElement>('[data-docode-workbench-root]');
     if (!workbenchRoot) return;
-    return presentNativeContent(content, firstLine, workbenchRoot);
-  }, [content, firstLine, root]);
+    return presentNativeContent(content, firstLine, workbenchRoot, codeStructure);
+  }, [codeStructure, content, firstLine, root]);
 
   useLayoutEffect(() => {
     if (!host.current || root.parentNode === host.current) return;
