@@ -7535,20 +7535,6 @@ try {
   });
   await statusMode.click();
   await topicFixturePage.getByRole('document', { name: 'Topic document' }).waitFor();
-  // TEMP PROBE
-  await topicFixturePage.waitForTimeout(400);
-  const probeDump = await topicFixturePage.evaluate(() => {
-    const cooked = document.querySelector('#native-cooked-1');
-    return Array.from(cooked?.children ?? []).map((child) => ({
-      tag: child.tagName.toLowerCase(),
-      text: (child.textContent ?? '').trim().slice(0, 30),
-      line: child.getAttribute('data-docode-editor-line'),
-      count: child.getAttribute('data-docode-editor-line-count'),
-      kind: child.getAttribute('data-docode-editor-line-kind'),
-    }));
-  });
-  console.log('PROBE-DOC-DUMP', JSON.stringify(probeDump, null, 1));
-  process.exit(0);
   const topicDocDocument = await readTopicDocDocument(topicFixturePage);
   assert.deepEqual(topicDocDocument, {
     contentFontSize: '13px',
