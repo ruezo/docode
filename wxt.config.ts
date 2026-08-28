@@ -1,8 +1,11 @@
 import { defineConfig } from 'wxt';
 
+const GECKO_EXTENSION_ID = 'docode@linux.do';
+const GECKO_MINIMUM_VERSION = '128.0';
+
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
-  manifest: {
+  manifest: ({ browser }) => ({
     name: 'DOCode',
     description: "Do not try Ctrl+S here, it's not effective.",
     permissions: ['storage'],
@@ -36,6 +39,19 @@ export default defineConfig({
         },
       },
     },
-  },
+    // Firefox needs a stable add-on id to install an unsigned XPI, and the
+    // MAIN-world reply bridge only exists from Firefox 128 onwards.
+    ...(browser === 'firefox'
+      ? {
+          browser_specific_settings: {
+            gecko: {
+              data_collection_permissions: { required: ['none'] },
+              id: GECKO_EXTENSION_ID,
+              strict_min_version: GECKO_MINIMUM_VERSION,
+            },
+          },
+        }
+      : {}),
+  }),
   vite: () => ({ build: { sourcemap: false } }),
 });

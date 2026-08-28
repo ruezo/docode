@@ -6,10 +6,11 @@
 
 **Your forum, now with a minimap.**
 
-A Chromium extension that renders community as a VS Code workbench.
+A Chromium and Firefox extension that renders community as a VS Code workbench.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Manifest V3](https://img.shields.io/badge/chrome-Manifest%20V3-4285F4.svg)](https://developer.chrome.com/docs/extensions)
+[![Firefox](https://img.shields.io/badge/firefox-128%2B-FF7139.svg)](https://www.mozilla.org/firefox/)
 [![TypeScript](https://img.shields.io/badge/built%20with-TypeScript-3178C6.svg)](https://www.typescriptlang.org/)
 [![Release](https://img.shields.io/github/v/release/ruezo/docode)](https://github.com/ruezo/docode/releases/latest)
 
@@ -52,20 +53,35 @@ https://github.com/user-attachments/assets/ac8673c9-1cd4-4bfe-9631-542461a1bb06
 
 ## Install
 
-[![Download for Chrome](https://img.shields.io/badge/%E2%AC%87%EF%B8%8E%20Download-latest%20release-2ea44f?style=for-the-badge)](https://github.com/ruezo/docode/releases/latest)
+[![Download latest release](https://img.shields.io/badge/%E2%AC%87%EF%B8%8E%20Download-latest%20release-2ea44f?style=for-the-badge)](https://github.com/ruezo/docode/releases/latest)
 
-Grab `docode-x.y.z-chrome.zip` from the latest release and unzip it — or build it yourself:
+Grab the file for your browser from the latest release — or build both yourself:
 
 ```bash
 npm ci
 npm run package:extension
 ```
 
-1. Open `chrome://extensions` and enable **Developer mode**.
+**Chrome / Edge / Brave** — `docode-x.y.z-chrome.zip`
+
+1. Unzip it, open `chrome://extensions`, and enable **Developer mode**.
 2. **Load unpacked** → select the unzipped folder (or `.output/chrome-mv3`).
 3. Visit [linux.do](https://linux.do).
 
-Building from source requires Node.js 22+; running requires any Chromium-based browser.
+**Firefox 128+** — `docode-x.y.z-firefox.xpi`
+
+The add-on is unsigned, so Firefox Release and Beta refuse to install it permanently. Either
+load it for the session, or use a build that allows unsigned add-ons:
+
+1. *Any Firefox, until restart:* open `about:debugging#/runtime/this-firefox` →
+   **Load Temporary Add-on…** → pick the `.xpi` (or `.output/firefox-mv3/manifest.json`).
+2. *Developer Edition, Nightly, or ESR, permanently:* set `xpinstall.signatures.required` to
+   `false` in `about:config`, then open the `.xpi` with `about:addons` → gear → **Install
+   Add-on From File…**.
+3. Visit [linux.do](https://linux.do).
+
+Building from source requires Node.js 22+. The `.xpi` and `docode-x.y.z-firefox.zip` are the same
+archive under two names — Firefox wants the `.xpi` extension, add-on stores want the `.zip`.
 
 
 ## Privacy
@@ -75,9 +91,13 @@ One `storage` permission. One content script, matched to `https://linux.do/*` on
 ## Development
 
 ```bash
-npm run dev      # WXT dev build
-npm run check    # format + lint + typecheck + tests + build + security audit
-npm run verify:extension   # full Playwright acceptance suite
+npm run dev              # WXT dev build (Chrome)
+npm run dev -- -b firefox --mv3   # WXT dev build (Firefox)
+npm run check            # format + lint + typecheck + tests + both builds + security audits
+npm run verify:extension # full Playwright acceptance suite
+npm run verify:package           # Chrome archive integrity + install/uninstall lifecycle
+npm run verify:package:firefox   # Firefox archive integrity + add-on manifest
+npx web-ext lint --source-dir .output/firefox-mv3   # optional Mozilla add-on linter
 ```
 
 ## License

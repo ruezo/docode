@@ -14,17 +14,20 @@
     "postinstall": "wxt prepare",
     "dev": "wxt",
     "build": "wxt build",
+    "build:firefox": "wxt build -b firefox --mv3",
     "format": "prettier --write package.json tsconfig.json wxt.config.ts eslint.config.js prettier.config.js vitest.config.ts \"entrypoints/**/*.{html,css,ts,tsx}\" \"src/**/*.{css,ts,tsx}\" \"scripts/**/*.{mjs,ts}\" \"tests/**/*.{ts,tsx}\"",
     "format:check": "prettier --check package.json tsconfig.json wxt.config.ts eslint.config.js prettier.config.js vitest.config.ts \"entrypoints/**/*.{html,css,ts,tsx}\" \"src/**/*.{css,ts,tsx}\" \"scripts/**/*.{mjs,ts}\" \"tests/**/*.{ts,tsx}\"",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit --pretty false",
     "test": "vitest run",
-    "audit:security": "node scripts/audit-security.mjs",
+    "audit:security": "node scripts/audit-security.mjs chrome",
+    "audit:security:firefox": "node scripts/audit-security.mjs firefox",
     "package:extension": "node scripts/package-extension.mjs",
     "verify:package": "node scripts/verify-package.mjs",
+    "verify:package:firefox": "node scripts/verify-firefox-package.mjs",
     "verify:content-context": "node scripts/verify-content-context-recovery.mjs",
     "verify:extension": "node scripts/verify-extension.mjs",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run audit:security"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run build:firefox && npm run audit:security && npm run audit:security:firefox"
   },
   "dependencies": {
     "@vscode/codicons": "0.0.46-24",

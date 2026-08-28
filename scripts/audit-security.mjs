@@ -4,7 +4,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outputRoot = path.join(projectRoot, '.output/chrome-mv3');
+const AUDIT_TARGETS = {
+  chrome: {
+    background: { service_worker: 'background.js' },
+    backgroundScripts: ['background.js'],
+    label: 'Chrome MV3',
+    outputDirectory: '.output/chrome-mv3',
+  },
+  firefox: {
+    background: { scripts: ['background.js'] },
+    backgroundScripts: ['background.js'],
+    label: 'Firefox MV3',
+    outputDirectory: '.output/firefox-mv3',
+  },
+};
+const targetName = process.argv[2] ?? 'chrome';
+const target = Object.hasOwn(AUDIT_TARGETS, targetName) ? AUDIT_TARGETS[targetName] : undefined;
+assert(target, `Unknown audit target: ${targetName}. Expected chrome or firefox.`);
+const outputRoot = path.join(projectRoot, target.outputDirectory);
 const manifestPath = path.join(outputRoot, 'manifest.json');
 const sourceExtensions = new Set(['.css', '.html', '.js', '.jsx', '.ts', '.tsx']);
 
@@ -28,9 +45,28 @@ assert.equal(
 );
 assert.deepEqual(
   manifest.background,
-  { service_worker: 'background.js' },
-  'The only background entry must be the reviewed MV3 window full-screen service worker.',
+  target.background,
+  'The only background entry must be the reviewed MV3 window full-screen worker.',
 );
+if (targetName === 'firefox') {
+  assert.deepEqual(
+    manifest.browser_specific_settings,
+    {
+      gecko: {
+        data_collection_permissions: { required: ['none'] },
+        id: 'docode@linux.do',
+        strict_min_version: '128.0',
+      },
+    },
+    'The Firefox build must declare the reviewed add-on id, minimum version, and no data collection.',
+  );
+} else {
+  assert.equal(
+    manifest.browser_specific_settings,
+    undefined,
+    'Only the Firefox build may declare gecko-specific settings.',
+  );
+}
 assert.equal(
   manifest.externally_connectable,
   undefined,
@@ -397,7 +433,9 @@ for (const contentScript of manifest.content_scripts) {
     await assertPackageEntry(entry);
   }
 }
-await assertPackageEntry(manifest.background.service_worker);
+for (const script of target.backgroundScripts) {
+  await assertPackageEntry(script);
+}
 await assertPackageEntry(manifest.action?.default_popup);
 
 const popupHtml = await readFile(path.join(outputRoot, manifest.action.default_popup), 'utf8');
@@ -433,7 +471,7 @@ for (const file of styleFiles) {
 }
 
 console.log(
-  `Security audit passed: storage-only permission, Linux DO-only scope, reviewed window full-screen worker, ${String(sourceFiles.length)} runtime source files, ${String(packageFiles.length)} packaged files.`,
+  `Security audit passed (${target.label}): storage-only permission, Linux DO-only scope, reviewed window full-screen worker, ${String(sourceFiles.length)} runtime source files, ${String(packageFiles.length)} packaged files.`,
 );
 
 async function assertPackageEntry(entry) {
